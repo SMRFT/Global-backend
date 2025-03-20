@@ -122,7 +122,7 @@ load_dotenv()
 def get_data_entitlements(request):
     client = MongoClient(os.getenv('DB_HOST'))
     db = client[os.getenv('DB_NAME')]
-    collection = db['backend_diagnostics_DataEntilements']
+    collection = db['backend_diagnostics_DataEntitlements']
 
     # Extracting all fields excluding '_id'
     data_entitlements = collection.find({}, {'_id': 0})
@@ -177,7 +177,29 @@ def get_data_designation(request):
 
 
 
-#primaryroles get from the db
+# #primaryroles get from the db
+# from django.http import JsonResponse
+# from pymongo import MongoClient
+# import os
+# from dotenv import load_dotenv
+
+# load_dotenv()
+
+# def get_data_primaryroles(request):
+#     client = MongoClient(os.getenv('DB_HOST'))
+#     db = client[os.getenv('DB_NAME')]
+#     collection = db['backend_diagnostics_RoleMapping']
+
+#     # Extracting all fields excluding '_id'
+#     data_primaryroles= collection.find({}, {'_id': 0})
+
+#     # Converting cursor to a list of dictionaries
+#     primaryroles_list = list(data_primaryroles)
+
+#     return JsonResponse({'designations': primaryroles_list})
+
+
+#additinalroles,primaryroles get from the db
 from django.http import JsonResponse
 from pymongo import MongoClient
 import os
@@ -185,40 +207,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_data_primaryroles(request):
+def getprimaryandadditionalrole(request):
     client = MongoClient(os.getenv('DB_HOST'))
     db = client[os.getenv('DB_NAME')]
-    collection = db['backend_diagnostics_PrimaryRole']
-
-    # Extracting all fields excluding '_id'
-    data_primaryroles= collection.find({}, {'_id': 0})
-
-    # Converting cursor to a list of dictionaries
-    primaryroles_list = list(data_primaryroles)
-
-    return JsonResponse({'designations': primaryroles_list})
-
-
-#additinalroles get from the db
-from django.http import JsonResponse
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-def get_data_additinalroles_list(request):
-    client = MongoClient(os.getenv('DB_HOST'))
-    db = client[os.getenv('DB_NAME')]
-    collection = db['backend_diagnostics_AdditionalRole']
+    collection = db['backend_diagnostics_RoleMapping']
 
     # Filter roles with is_active=True
-    data_additinalroles = collection.find({"is_active": True}, {'_id': 0})
+    get_data = collection.find({"is_active": True}, {'_id': 0})
 
     # Convert cursor to list
-    additinalroles_list = list(data_additinalroles)
+    data_list = list(get_data)
 
-    return JsonResponse({'designations': additinalroles_list})
+    return JsonResponse({'designations': data_list})
 
 
 
