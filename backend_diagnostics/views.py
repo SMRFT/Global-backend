@@ -233,6 +233,7 @@ from django.utils.decorators import method_decorator
 from pymongo import MongoClient
 import json
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -246,21 +247,28 @@ def update_department(request, department_code):
     if request.method == 'PUT':
         try:
             data = json.loads(request.body)
-
-            # Fetch current department status
             collection = db['backend_diagnostics_Departments']
-            current_status = collection.find_one({"department_code": department_code}, {"is_active": 1})
 
-            if not current_status:
+            # Fetch the current department details
+            department = collection.find_one({"department_code": department_code}, {"is_active": 1})
+
+            if not department:
                 return JsonResponse({"error": "Department not found"}, status=404)
 
-            # Toggle Status Logic
-            new_status = not current_status.get('is_active', False)
+            # Toggle status
+            new_status = not department.get('is_active', False)
+            current_time = datetime.utcnow().isoformat()
 
-            # Update Database
+            # Update both created_date and lastmodified_date
             result = collection.update_one(
                 {"department_code": department_code},
-                {"$set": {"is_active": new_status}}
+                {
+                    "$set": {
+                        "is_active": new_status,
+                        "created_date": current_time,
+                        "lastmodified_date": current_time
+                    }
+                }
             )
 
             if result.matched_count == 0:
@@ -277,21 +285,28 @@ def update_designation(request, designation_code):
     if request.method == 'PUT':
         try:
             data = json.loads(request.body)
-
-            # Fetch current designation status
             collection = db['backend_diagnostics_Designation']
-            current_status = collection.find_one({"Designation_code": designation_code}, {"is_active": 1})
 
-            if not current_status:
+            # Fetch the current designation details
+            designation = collection.find_one({"Designation_code": designation_code}, {"is_active": 1})
+
+            if not designation:
                 return JsonResponse({"error": "Designation not found"}, status=404)
 
-            # Toggle Status Logic
-            new_status = not current_status.get('is_active', False)
+            # Toggle status
+            new_status = not designation.get('is_active', False)
+            current_time = datetime.utcnow().isoformat()
 
-            # Update Database
+            # Update both created_date and lastmodified_date
             result = collection.update_one(
                 {"Designation_code": designation_code},
-                {"$set": {"is_active": new_status}}
+                {
+                    "$set": {
+                        "is_active": new_status,
+                        "created_date": current_time,
+                        "lastmodified_date": current_time
+                    }
+                }
             )
 
             if result.matched_count == 0:
