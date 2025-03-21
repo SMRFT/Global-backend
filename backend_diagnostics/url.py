@@ -9,8 +9,8 @@ path('set_employee_password/', views.set_employee_password, name='set_employee_p
 path('data-entitlements/', views.get_data_entitlements, name='get_data_entitlements'),
 path('get_data_departments/', views.get_data_departments, name='get_data_departments'),
 path('get_data_designation/', views.get_data_designation, name='get_data_designation'),
-path('get_data_primaryroles/', views.get_data_primaryroles, name='get_data_primaryroles'),
-path('get_data_additinalroles_list', views.get_data_additinalroles_list, name='get_data_additinalroles_list'),
+
+path('getprimaryandadditionalrole/', views.getprimaryandadditionalrole, name='getprimaryandadditionalrole'),
 path('update_department/<str:department_code>/', views.update_department, name='update_department'),
 path('update_designation/<str:designation_code>/', views.update_designation, name='update_designation'),
 ]
