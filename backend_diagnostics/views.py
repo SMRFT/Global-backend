@@ -18,6 +18,8 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Admin_groups
 from .serializers import  AdminSerializer
 from rest_framework import status
+from .perms import HasRoleAndDataPermission
+
 # class AdminLogin(APIView):
 #     def post(self, request):
 #         cred = base64.b64decode(request.headers["Authorization"][6:]).decode('utf-8')
@@ -73,6 +75,7 @@ from .models import Profile
 from .serializers import ProfileSerializer
 
 @api_view(['POST', 'GET'])
+@permission_classes([HasRoleAndDataPermission])  # Use AllowAny if authentication is not required
 def create_employee(request):
     if request.method == 'POST':
         serializer = ProfileSerializer(data=request.data)
