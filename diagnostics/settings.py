@@ -140,6 +140,12 @@ CORS_ALLOWED_ORIGINS = [
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "data-code",
+    "Content-Type",
+]
+
 STATIC_URL = 'static/'
 
 # Default primary key field type
