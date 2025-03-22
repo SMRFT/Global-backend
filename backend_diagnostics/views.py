@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Admin_groups
 from .serializers import  AdminSerializer
 from rest_framework import status
-from .perms import HasRoleAndDataPermission
+from .auth.auth import HasRoleAndDataPermission
 
 # class AdminLogin(APIView):
 #     def post(self, request):
@@ -123,8 +123,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_data_entitlements(request):
-    client = MongoClient(os.getenv('DB_HOST'))
-    db = client[os.getenv('DB_NAME')]
+    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+    db = client[os.getenv('GLOBAL_DB_NAME')]
     collection = db['backend_diagnostics_DataEntitlements']
 
     # Extracting all fields excluding '_id'
@@ -145,8 +145,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_data_departments(request):
-    client = MongoClient(os.getenv('DB_HOST'))
-    db = client[os.getenv('DB_NAME')]
+    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+    db = client[os.getenv('GLOBAL_DB_NAME')]
     collection = db['backend_diagnostics_Departments']
 
     # Extracting all fields excluding '_id'
@@ -166,8 +166,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def get_data_designation(request):
-    client = MongoClient(os.getenv('DB_HOST'))
-    db = client[os.getenv('DB_NAME')]
+    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+    db = client[os.getenv('GLOBAL_DB_NAME')]
     collection = db['backend_diagnostics_Designation']
 
     # Extracting all fields excluding '_id'
@@ -189,8 +189,8 @@ def get_data_designation(request):
 # load_dotenv()
 
 # def get_data_primaryroles(request):
-#     client = MongoClient(os.getenv('DB_HOST'))
-#     db = client[os.getenv('DB_NAME')]
+#     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+#     db = client[os.getenv('GLOBAL_DB_NAME')]
 #     collection = db['backend_diagnostics_RoleMapping']
 
 #     # Extracting all fields excluding '_id'
@@ -211,8 +211,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 def getprimaryandadditionalrole(request):
-    client = MongoClient(os.getenv('DB_HOST'))
-    db = client[os.getenv('DB_NAME')]
+    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+    db = client[os.getenv('GLOBAL_DB_NAME')]
     collection = db['backend_diagnostics_RoleMapping']
 
     # Filter roles with is_active=True
@@ -241,8 +241,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-client = MongoClient(os.getenv('DB_HOST'))
-db = client[os.getenv('DB_NAME')]
+client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+db = client[os.getenv('GLOBAL_DB_NAME')]
 
 # Toggle Department Status
 @method_decorator(csrf_exempt, name='dispatch')
