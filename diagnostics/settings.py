@@ -93,11 +93,11 @@ import certifi
 DATABASES = {
     'default': {
         'ENGINE': 'djongo',
-        'NAME': os.getenv("DB_NAME"),
+        'NAME': os.getenv("GLOBAL_DB_NAME"),
         'ENFORCE_SCHEMA': False,
         'CLIENT': {
-            'host': os.getenv("DB_HOST"),
-            'password': os.getenv("DB_PASSWORD"),
+            'host': os.getenv("GLOBAL_DB_HOST"),
+            'password': os.getenv("GLOBAL_DB_PASSWORD"),
             'tls': True,
             'tlsCAFile': certifi.where(),
         }
