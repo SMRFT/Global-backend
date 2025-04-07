@@ -1,18 +1,10 @@
-
 PAGE_MAPPING = {
-    '/create_employee/': 'GL-P-AB',
-    '/barcode': 'SD-P-BAR',
-    '/test': 'SD-P-TST',
-    '/dummy': 'SD-P-DMY',
-    # All page mappings...
+    '/create_employee/': 'GL-P-EPM',
 }
 
 PAGE_ACTION_MAPPING = {
-    'SD-P-BAR': {
-        'POST':'GBC',
-    },
-    'SD-P-BAR': {
-        'PUT':'RBC',
+    'GL-P-EPM': {
+        'DELETE':'RWD',
     },
 }
 

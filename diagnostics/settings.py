@@ -141,9 +141,9 @@ CORS_ALLOWED_ORIGINS = [
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 CORS_ALLOW_HEADERS = [
-    "authorization",
-    "data-code",
+    "Authorization",
     "Content-Type",
+    "Branch-Code"
 ]
 
 STATIC_URL = 'static/'

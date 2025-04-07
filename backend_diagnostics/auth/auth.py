@@ -9,7 +9,7 @@ class HasRoleAndDataPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         try:
             token = request.headers["Authorization"]
-            branch_code = request.headers["branch-code"]
+            branch_code = request.headers["Branch-Code"]
             page_path = request.get_full_path()
             http_method = request.method
             checkAccess(token, branch_code, page_path, http_method)
@@ -21,5 +21,4 @@ class HasRoleAndDataPermission(permissions.BasePermission):
         except:
             print(f'Error occured in access validation')
             return False
-            
 
