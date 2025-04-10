@@ -75,7 +75,7 @@ from .models import Profile
 from .serializers import ProfileSerializer
 
 @api_view(['POST', 'GET'])
-@permission_classes([HasRoleAndDataPermission])  # Use AllowAny if authentication is not required
+# @permission_classes([HasRoleAndDataPermission])  # Use AllowAny if authentication is not required
 def create_employee(request):
     if request.method == 'POST':
         serializer = ProfileSerializer(data=request.data)
@@ -90,18 +90,28 @@ def create_employee(request):
         return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
     
 
+ #creation of password each employee (Through HR)   
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
+from django.utils.timezone import now
+import pytz
 from .models import user
 from .serializers import userSerializer
 from django.contrib.auth.hashers import make_password
+
+IST = pytz.timezone('Asia/Kolkata')
 
 @api_view(['POST', 'GET'])
 def set_employee_password(request):
     if request.method == 'POST':
         data = request.data.copy()
         data['password'] = make_password(data['password'])  # Hash password securely
+        data['is_active'] = True  # Ensures is_active is True
+        data['created_date'] = now().astimezone(IST)  # Indian timezone
+        data['lastmodified_date'] = now().astimezone(IST)
+        data['created_by'] = data.get('created_by', 'system')  # Default to 'system'
+        data['lastmodified_by'] = data.get('lastmodified_by', 'system')  # Default to 'system'
 
         serializer = userSerializer(data=data)
         if serializer.is_valid():
@@ -109,9 +119,10 @@ def set_employee_password(request):
             return Response({"message": "Password created successfully", "data": serializer.data}, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     elif request.method == 'GET':
-        user = user.objects.all()
-        serializer = userSerializer(user, many=True)
+        users = user.objects.all()
+        serializer = userSerializer(users, many=True)
         return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
 
 
@@ -319,6 +330,9 @@ def update_designation(request, designation_code):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+
+
+
 
 
 
