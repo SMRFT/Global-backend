@@ -1,11 +1,8 @@
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
-from rest_framework_simplejwt.tokens import RefreshToken
 import base64
 from django.conf import settings
-from django.http import JsonResponse
 from django.http import JsonResponse, HttpResponse,HttpResponseBadRequest,response
 import secrets
 import string
@@ -13,12 +10,29 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 import os.path
 import os
-# from rest_framework.views import APIView
 from django.views.decorators.csrf import csrf_exempt
 from .models import Admin_groups
 from .serializers import  AdminSerializer
 from rest_framework import status
 from .auth.auth import HasRoleAndDataPermission
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response  
+from rest_framework.decorators import api_view
+from .models import Profile
+from .serializers import ProfileSerializer
+from django.utils.timezone import now
+import pytz
+from .models import user
+from .serializers import userSerializer
+from django.contrib.auth.hashers import make_password
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+from django.utils.decorators import method_decorator
+import json
+from datetime import datetime
+load_dotenv()
+IST = pytz.timezone('Asia/Kolkata')
 
 # class AdminLogin(APIView):
 #     def post(self, request):
@@ -48,15 +62,9 @@ from .auth.auth import HasRoleAndDataPermission
 #         }
 #         return Response(response_data)
     
-
-
-from rest_framework.permissions import AllowAny
-
-from rest_framework.response import Response  # Import Response
-
 @csrf_exempt
 @api_view(['POST'])
-@permission_classes([AllowAny])  # Use AllowAny if authentication is not required
+@permission_classes([HasRoleAndDataPermission])
 def admin_registration(request):
     """
     View for handling admin registration.
@@ -67,15 +75,8 @@ def admin_registration(request):
         return Response(serializer.data, status=status.HTTP_201_CREATED)  # Fix response
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from .models import Profile
-from .serializers import ProfileSerializer
-
 @api_view(['POST', 'GET'])
-# @permission_classes([HasRoleAndDataPermission])  # Use AllowAny if authentication is not required
+@permission_classes([HasRoleAndDataPermission])  # Use AllowAny if authentication is not required
 def create_employee(request):
     if request.method == 'POST':
         serializer = ProfileSerializer(data=request.data)
@@ -88,21 +89,9 @@ def create_employee(request):
         employees = Profile.objects.all()
         serializer = ProfileSerializer(employees, many=True)
         return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
-    
-
- #creation of password each employee (Through HR)   
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.decorators import api_view
-from django.utils.timezone import now
-import pytz
-from .models import user
-from .serializers import userSerializer
-from django.contrib.auth.hashers import make_password
-
-IST = pytz.timezone('Asia/Kolkata')
-
+   
 @api_view(['POST', 'GET'])
+@permission_classes([HasRoleAndDataPermission])
 def set_employee_password(request):
     if request.method == 'POST':
         data = request.data.copy()
@@ -125,14 +114,6 @@ def set_employee_password(request):
         serializer = userSerializer(users, many=True)
         return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
 
-
-from django.http import JsonResponse
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 def get_data_entitlements(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -145,15 +126,6 @@ def get_data_entitlements(request):
     entitlements_list = list(data_entitlements)
 
     return JsonResponse({'dataEntitlements': entitlements_list})
-
-
-
-from django.http import JsonResponse
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 def get_data_departments(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
@@ -168,14 +140,6 @@ def get_data_departments(request):
 
     return JsonResponse({'departments': departments_list})
 
-
-from django.http import JsonResponse
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 def get_data_designation(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -188,16 +152,6 @@ def get_data_designation(request):
     designation_list = list(data_designation)
 
     return JsonResponse({'designations': designation_list})
-
-
-
-# #primaryroles get from the db
-# from django.http import JsonResponse
-# from pymongo import MongoClient
-# import os
-# from dotenv import load_dotenv
-
-# load_dotenv()
 
 # def get_data_primaryroles(request):
 #     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
@@ -213,14 +167,6 @@ def get_data_designation(request):
 #     return JsonResponse({'designations': primaryroles_list})
 
 
-#additinalroles,primaryroles get from the db
-from django.http import JsonResponse
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
 def getprimaryandadditionalrole(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -235,28 +181,12 @@ def getprimaryandadditionalrole(request):
     return JsonResponse({'designations': data_list})
 
 
-
-
-
-
-#update codes
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from pymongo import MongoClient
-import json
-import os
-from datetime import datetime
-from dotenv import load_dotenv
-
-load_dotenv()
-
 client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
 db = client[os.getenv('GLOBAL_DB_NAME')]
 
 # Toggle Department Status
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([HasRoleAndDataPermission])
 def update_department(request, department_code):
     if request.method == 'PUT':
         try:
@@ -295,6 +225,7 @@ def update_department(request, department_code):
 
 # Toggle Designation Status
 @method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([HasRoleAndDataPermission])
 def update_designation(request, designation_code):
     if request.method == 'PUT':
         try:
@@ -330,11 +261,3 @@ def update_designation(request, designation_code):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
-
-
-
-
-
-
-
-

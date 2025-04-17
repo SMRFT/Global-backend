@@ -1,5 +1,9 @@
 PAGE_MAPPING = {
-    '/create_employee/': 'GL-P-EPM',
+    '/admin_registration/':'GL-P-EAD',
+    '/create_employee/': 'GL-P-EP',
+    '/set_employee_password/':'GL-P-EL',
+    '/update_department/':'GL-P-EAD',
+    '/update_designation/':'GL-P-EAD',
 }
 
 PAGE_ACTION_MAPPING = {
