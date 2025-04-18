@@ -21,4 +21,3 @@ class HasRoleAndDataPermission(permissions.BasePermission):
         except:
             print(f'Error occured in access validation')
             return False
-
