@@ -12,11 +12,11 @@ def main():
     print(f"Initializing environment: {environment}" )
 
     if environment == 'prod':
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings-prod')
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'diagnostics.settings-prod')
     elif environment == 'test':
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings-test')
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'diagnostics.settings-test')
     else:
-        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+        os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'diagnostics.settings')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
