@@ -3,6 +3,12 @@ from .views import admin_registration
 from . import views 
 
 urlpatterns = [
+path('adminreg/', admin_registration, name='admin_registration'),
+path('create_employee/', views.create_employee, name='create_employee'),
+path('set_employee_password/', views.set_employee_password, name='set_employee_password/'),
+path('update_department/<str:department_code>/', views.update_department, name='update_department'),
+path('update_designation/<str:designation_code>/', views.update_designation, name='update_designation'),
+
 path('_b_a_c_k_e_n_d/Global/adminreg/', admin_registration, name='admin_registration'),
 path('_b_a_c_k_e_n_d/Global/create_employee/', views.create_employee, name='create_employee'),
 path('_b_a_c_k_e_n_d/Global/set_employee_password/', views.set_employee_password, name='set_employee_password/'),
