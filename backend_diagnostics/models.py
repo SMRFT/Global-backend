@@ -70,8 +70,6 @@ class Profile(models.Model):
 
     # Experience (List of dictionaries)
     experiences = models.JSONField(default=list)  # Example: [{"company": "", "position": "", "yearsOfExperience": "", "fromDate": "", "toDate": "", "certificate": "", "certificateName": ""}]
-
-    
     created_date = models.DateTimeField(default=lambda: now().astimezone(IST))  # Indian Timezone
     created_by = models.CharField(max_length=100, default='system')  # Default 'system'
     lastmodified_by = models.CharField(max_length=100, default='system')  # Default 'system'
