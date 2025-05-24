@@ -1,21 +1,11 @@
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.exceptions import AuthenticationFailed
-from django.utils import timezone
-import base64
-from django.conf import settings
-from django.http import JsonResponse, HttpResponse,HttpResponseBadRequest,response
-import secrets
-import string
+
+from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-import os.path
 import os
 from django.views.decorators.csrf import csrf_exempt
-from .models import Admin_groups
 from .serializers import  AdminSerializer
 from rest_framework import status
 from pyauth.auth import HasRoleAndDataPermission
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response  
 from rest_framework.decorators import api_view
 from .models import Profile
@@ -34,34 +24,7 @@ from datetime import datetime
 load_dotenv()
 IST = pytz.timezone('Asia/Kolkata')
 
-# class AdminLogin(APIView):
-#     def post(self, request):
-#         cred = base64.b64decode(request.headers["Authorization"][6:]).decode('utf-8')
-#         i = cred.index(':')
-#         email = cred[:i]
-#         password = cred[i+1:]
-#         # Assuming you have an Admin model with email, password, name, role, and mobile fields
-#         user = Admin.objects.filter(email=email).first()
-#         if user is None:
-#             raise AuthenticationFailed('User not found!')
-#         if not user.check_password(password):
-#             raise AuthenticationFailed('Incorrect password!')
-#         if not user.is_active:
-#             raise AuthenticationFailed('User is not active!')
-#         # Generate a JWT token
-#         refresh = RefreshToken.for_user(user)
-#         refresh.access_token.set_exp(timezone.now() + settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'])
-#         access_token = str(refresh.access_token)
-#         # Return the JWT token in 'Bearer' format
-#         response_data = {
-#             'jwt': f'Bearer {access_token}',  # JWT token in 'Bearer' format
-#             'email': user.email,
-#             'name': user.name,
-#             'role': user.role,
-#             'mobile': user.mobile
-#         }
-#         return Response(response_data)
-    
+
 @csrf_exempt
 @api_view(['POST'])
 @permission_classes([HasRoleAndDataPermission])
@@ -113,7 +76,10 @@ def set_employee_password(request):
         users = user.objects.all()
         serializer = userSerializer(users, many=True)
         return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
+    
 
+@api_view(['POST', 'GET'])
+@permission_classes([HasRoleAndDataPermission])
 def get_data_entitlements(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -127,6 +93,9 @@ def get_data_entitlements(request):
 
     return JsonResponse({'dataEntitlements': entitlements_list})
 
+
+@api_view(['POST', 'GET'])
+@permission_classes([HasRoleAndDataPermission])
 def get_data_departments(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -140,6 +109,8 @@ def get_data_departments(request):
 
     return JsonResponse({'departments': departments_list})
 
+@api_view(['POST', 'GET'])
+@permission_classes([HasRoleAndDataPermission])
 def get_data_designation(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -153,20 +124,9 @@ def get_data_designation(request):
 
     return JsonResponse({'designations': designation_list})
 
-# def get_data_primaryroles(request):
-#     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-#     db = client[os.getenv('GLOBAL_DB_NAME')]
-#     collection = db['backend_diagnostics_RoleMapping']
 
-#     # Extracting all fields excluding '_id'
-#     data_primaryroles= collection.find({}, {'_id': 0})
-
-#     # Converting cursor to a list of dictionaries
-#     primaryroles_list = list(data_primaryroles)
-
-#     return JsonResponse({'designations': primaryroles_list})
-
-
+@api_view(['POST', 'GET'])
+@permission_classes([HasRoleAndDataPermission])
 def getprimaryandadditionalrole(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
     db = client[os.getenv('GLOBAL_DB_NAME')]
@@ -185,9 +145,12 @@ client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
 db = client[os.getenv('GLOBAL_DB_NAME')]
 
 # Toggle Department Status
+@api_view(['POST', 'GET'])
 @method_decorator(csrf_exempt, name='dispatch')
 @permission_classes([HasRoleAndDataPermission])
 def update_department(request, department_code):
+    print("Authorization:", request.headers.get("Authorization"))
+    print("Branch-code:", request.headers.get("branch-code"))
     if request.method == 'PUT':
         try:
             data = json.loads(request.body)
@@ -223,10 +186,14 @@ def update_department(request, department_code):
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
 
-# Toggle Designation Status
+
+
+@api_view(['POST', 'GET'])
 @method_decorator(csrf_exempt, name='dispatch')
 @permission_classes([HasRoleAndDataPermission])
 def update_designation(request, designation_code):
+    print("Authorization:", request.headers.get("Authorization"))
+    print("Branch-code:", request.headers.get("branch-code"))
     if request.method == 'PUT':
         try:
             data = json.loads(request.body)

@@ -1,29 +1,10 @@
-from dataclasses import fields
-from pickle import TRUE
-from unittest.util import _MAX_LENGTH
-import uuid
-from django.db import models
-from django.contrib.auth.models import AbstractUser
-from django.core.files.storage import FileSystemStorage
-from django.conf import settings
-from django.core.mail import send_mail
-from django.http import JsonResponse
-from django.utils import timezone
 
 
-from django.contrib.auth.models import AbstractUser
 from django.db import models
-from rest_framework import serializers, status
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from django.utils.crypto import get_random_string
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from bson import ObjectId
 
-from django.utils.http import parse_http_date_safe
+
 
 
 
@@ -90,6 +71,11 @@ class Profile(models.Model):
     # Experience (List of dictionaries)
     experiences = models.JSONField(default=list)  # Example: [{"company": "", "position": "", "yearsOfExperience": "", "fromDate": "", "toDate": "", "certificate": "", "certificateName": ""}]
 
+    
+    created_date = models.DateTimeField(default=lambda: now().astimezone(IST))  # Indian Timezone
+    created_by = models.CharField(max_length=100, default='system')  # Default 'system'
+    lastmodified_by = models.CharField(max_length=100, default='system')  # Default 'system'
+    lastmodified_date = models.DateTimeField(default=lambda: now().astimezone(IST))  # Indian Timezone
     def __str__(self):
         return self.employeeName
 
