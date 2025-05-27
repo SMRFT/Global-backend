@@ -28,4 +28,6 @@ GEN_ACTION_MAPPING = {
     'PUT': 'RW',
     'DELETE': 'RW',
     'GET': 'R',
+    'DISPATCH': 'RW',  # ✅ Added dispatch mapping
 }
+

@@ -145,8 +145,7 @@ client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
 db = client[os.getenv('GLOBAL_DB_NAME')]
 
 # Toggle Department Status
-@api_view(['POST', 'GET'])
-@method_decorator(csrf_exempt, name='dispatch')
+@api_view(['POST', 'GET', 'PUT'])
 @permission_classes([HasRoleAndDataPermission])
 def update_department(request, department_code):
     print("Authorization:", request.headers.get("Authorization"))
@@ -188,8 +187,7 @@ def update_department(request, department_code):
 
 
 
-@api_view(['POST', 'GET'])
-@method_decorator(csrf_exempt, name='dispatch')
+@api_view(['POST', 'GET','PUT'])
 @permission_classes([HasRoleAndDataPermission])
 def update_designation(request, designation_code):
     print("Authorization:", request.headers.get("Authorization"))
