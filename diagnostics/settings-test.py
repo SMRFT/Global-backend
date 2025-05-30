@@ -131,17 +131,10 @@ USE_I18N = True
 
 USE_TZ = True
 
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000","http://localhost:3001", "http://localhost:6553"]
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-CORS_ALLOW_HEADERS = [
-    "Authorization",
-    "Content-Type",
-    "Branch-Code"
-]
+
 
 STATIC_URL = 'static/'
 
