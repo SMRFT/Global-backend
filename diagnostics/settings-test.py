@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-        'corsheaders',
+    'corsheaders',
     'backend_diagnostics',
 ]
 
@@ -51,6 +51,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -63,6 +64,7 @@ MIDDLEWARE = [
         'corsheaders.middleware.CorsMiddleware',
 ]
 
+# URL configuration
 ROOT_URLCONF = 'diagnostics.urls'
 
 TEMPLATES = [
