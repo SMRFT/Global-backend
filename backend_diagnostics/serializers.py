@@ -9,7 +9,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.contrib.auth.hashers import make_password
 from bson import ObjectId
-from backend_diagnostics.models import Admin_groups  # ✅ ONLY IMPORT IT
+from backend_diagnostics.models import Admin_groups ,GridFSFile 
 
 from bson import ObjectId
 
@@ -41,7 +41,12 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = '__all__'
 
+class GridFSFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GridFSFile
+        fields = '__all__'
 
+        
 from rest_framework import serializers
 from .models import user
 

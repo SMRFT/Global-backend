@@ -6,6 +6,8 @@ urlpatterns = [
 
 path('adminreg/', admin_registration, name='admin_registration'),
 path('create_employee/', views.create_employee, name='create_employee'),
+path('upload-gridfs/', views.upload_gridfs, name='upload_gridfs'),
+path('download-gridfs/<str:file_id>/', views.download_gridfs, name='download_gridfs'),
 path('set_employee_password/', views.set_employee_password, name='set_employee_password/'),
 path('data-entitlements/', views.get_data_entitlements, name='get_data_entitlements'),
 path('get_data_departments/', views.get_data_departments, name='get_data_departments'),
