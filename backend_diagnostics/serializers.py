@@ -35,11 +35,52 @@ class AdminSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Profile
 
+from rest_framework import serializers
+import ast
+from collections import OrderedDict
+
 class ProfileSerializer(serializers.ModelSerializer):
-    id = ObjectIdField(read_only=True)
+    qualifications = serializers.SerializerMethodField()
+    experiences = serializers.SerializerMethodField()
+    familyDetails = serializers.SerializerMethodField()
+    kycDetails = serializers.SerializerMethodField()
+    salaryDetails = serializers.SerializerMethodField()
+    fnfStatus = serializers.SerializerMethodField()
+    bankDetails = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
         fields = '__all__'
+
+    def parse_field(self, field):
+        if isinstance(field, str):
+            try:
+                # Try parsing stringified OrderedDict or list of OrderedDicts
+                return ast.literal_eval(field)
+            except Exception:
+                return field  # fallback if already parsed
+        return field  # already JSON or dict
+
+    def get_qualifications(self, obj):
+        return self.parse_field(obj.qualifications)
+
+    def get_experiences(self, obj):
+        return self.parse_field(obj.experiences)
+
+    def get_familyDetails(self, obj):
+        return self.parse_field(obj.familyDetails)
+
+    def get_kycDetails(self, obj):
+        return self.parse_field(obj.kycDetails)
+
+    def get_salaryDetails(self, obj):
+        return self.parse_field(obj.salaryDetails)
+
+    def get_fnfStatus(self, obj):
+        return self.parse_field(obj.fnfStatus)
+
+    def get_bankDetails(self, obj):
+        return self.parse_field(obj.bankDetails)
 
 class GridFSFileSerializer(serializers.ModelSerializer):
     class Meta:
