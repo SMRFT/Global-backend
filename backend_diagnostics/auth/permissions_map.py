@@ -7,18 +7,26 @@ PAGE_MAPPING = {
     '/_b_a_c_k_e_n_d/Global/getprimaryandadditionalrole/':'GL-P-EP',
     '/_b_a_c_k_e_n_d/Global/set_employee_password/':'GL-P-EL',
     '/_b_a_c_k_e_n_d/Global/set_employee_status/':'GL-P-P',
-    '/_b_a_c_k_e_n_d/Global/get_employees_with_labels/':'GL-P-EL',
-
-    
+    '/_b_a_c_k_e_n_d/Global/get_employees_with_labels/':'GL-P-ED',
     '/_b_a_c_k_e_n_d/Global/update_department/.*/':'GL-P-EAD',
     '/_b_a_c_k_e_n_d/Global/update_designation/.*/':'GL-P-EAD',
+    '/_b_a_c_k_e_n_d/Global/get_employee_by_id/.*/':'GL-P-ED',
+    '/_b_a_c_k_e_n_d/Global/update_employee/.*/':'GL-P-ED',
+    '/_b_a_c_k_e_n_d/Global/serve_file/': 'GL-P-ED',
+
 
     '/adminreg/':'GL-P-EAD',
     '/create_employee/': 'GL-P-EP',
     '/set_employee_password/':'GL-P-EL',
     '/update_department/.*/':'GL-P-EAD',
     '/update_designation/.*/':'GL-P-EAD',
-    '/get_employees_with_labels/': 'GL-P-EL',
+    '/get_employees_with_labels/': 'GL-P-ED',
+    '/get_data_departments/': 'GL-P-EP',
+    '/get_data_designation/': 'GL-P-EP',
+    '/getprimaryandadditionalrole/': 'GL-P-EP',
+    '/get_employee_by_id/.*/': 'GL-P-ED',
+    '/update_employee/.*/': 'GL-P-ED',
+    '/serve_file/': 'GL-P-EL',
         
 }
 

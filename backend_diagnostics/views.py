@@ -341,7 +341,7 @@ def safe_json_load(value):
     return value if value else []
 
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
+@permission_classes([HasRoleAndDataPermission])
 def update_employee(request, employee_id):
     """Update employee profile with all frontend payload data"""
     
@@ -483,6 +483,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 @api_view(['GET'])
+@permission_classes([HasRoleAndDataPermission])
 def get_employee_by_id(request, employee_id):
     try:
         profile = Profile.objects.filter(employeeId=employee_id).first()
@@ -510,6 +511,7 @@ logger = logging.getLogger(__name__)
 
 @api_view(['PUT'])
 @parser_classes([MultiPartParser, FormParser])  # Required for FormData/file handling
+@permission_classes([HasRoleAndDataPermission])
 def update_employee(request, employee_id):
     try:
         profile = Profile.objects.filter(employeeId=employee_id).first()
@@ -531,7 +533,7 @@ def update_employee(request, employee_id):
 
 
 @api_view(['GET'])
-# @permission_classes([HasRoleAndDataPermission])
+@permission_classes([HasRoleAndDataPermission])
 def get_employees_with_labels(request):
     try:
         # Fetch employee profiles
