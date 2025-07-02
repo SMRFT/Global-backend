@@ -125,7 +125,9 @@ class Profile(models.Model):
     # lastmodified_by = models.CharField(max_length=100)
     lastmodified_date = models.DateTimeField(auto_now=True)
     
-
+    
+    
+    
 class GridFSFile(models.Model):
     file_id = models.CharField(max_length=100, unique=True)
     filename = models.CharField(max_length=500)
@@ -139,6 +141,9 @@ class GridFSFile(models.Model):
 
     class Meta:
         db_table = 'gridfs_files'
+        
+        
+        
 from django.db import models
 from django.utils.timezone import now
 import pytz
