@@ -61,16 +61,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def safe_json_load(data):
-    """Safely parse JSON data"""
-    if isinstance(data, str):
-        try:
-            return json.loads(data)
-        except json.JSONDecodeError:
-            return []
-    elif isinstance(data, list):
-        return data
-    return []
+import json
+
+def safe_json_load(value):
+    try:
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+    except Exception:
+        return []
+
 
 @api_view(['POST'])
 def upload_gridfs(request):
@@ -138,207 +138,170 @@ def upload_gridfs(request):
             'details': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-def upload_file_to_gridfs(file_obj, filename, content_type):
-    """Uploads a file to GridFS and returns the file ID"""
-    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
-    fs = GridFS(db)
-    file_id = fs.put(file_obj, filename=filename, content_type=content_type)
-    return str(file_id)
+import os
+import json
+import logging
+import gridfs
+from datetime import datetime
+from pymongo import MongoClient
+from bson import ObjectId
 
-@api_view(['POST', 'GET'])
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+
+from .models import Profile
+from .serializers import ProfileSerializer
+
+
+logger = logging.getLogger(__name__)
+
+# Utility to safely parse JSON strings
+def safe_json_load(value, default=None):
+    if not value:
+        return default if default is not None else []
+    if isinstance(value, (dict, list)):
+        return value
+    try:
+        return json.loads(value)
+    except Exception as e:
+        logger.warning(f"Invalid JSON input: {value} — {e}")
+        return default if default is not None else []
+
+# Upload file to GridFS inline
+def upload_file_to_gridfs(file_obj, filename, content_type, file_type='document', uploaded_by='system'):
+    try:
+        client = MongoClient(os.getenv("GLOBAL_DB_HOST"))
+        db = client[os.getenv("GLOBAL_DB_NAME")]
+        fs = gridfs.GridFS(db)
+
+        file_id = fs.put(
+            file_obj.read(),
+            filename=filename,
+            content_type=content_type,
+            file_type=file_type,
+            uploaded_by=uploaded_by,
+            upload_date=datetime.utcnow()
+        )
+
+        return str(file_id)
+    except Exception as e:
+        raise Exception(f"GridFS upload failed: {str(e)}")
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
+import logging, json
+from .models import Profile
+from .serializers import ProfileSerializer
+
+
+logger = logging.getLogger(__name__)
+
+
+
+@api_view(['POST'])
+@permission_classes([HasRoleAndDataPermission])
 def create_employee(request):
-    if request.method == 'POST':
-        try:
-            data = request.data.copy()
-            files = request.FILES
-            employee_id = data.get('auth-user-name') or data.get('employee_id', 'system')
+    try:
+        data = request.data.copy()
+        employee_id = data.get('auth-user-name') or data.get('employee_id', 'system')
 
-            logger.info(f"Received complete employee data: {data}")
+        logger.info(f"Received employee data for ID: {data.get('employeeId')}")
 
-            # Validate required fields
-            required_fields = ['employeeId', 'employeeName', 'email', 'gender', 'mobileNumber', 'dateOfBirth']
-            missing_fields = [field for field in required_fields if not data.get(field)]
-            if missing_fields:
-                return Response({
-                    'error': f"Missing required fields: {', '.join(missing_fields)}",
-                    'missingFields': missing_fields
-                }, status=status.HTTP_400_BAD_REQUEST)
+        required_fields = ['employeeId', 'employeeName', 'email', 'gender', 'mobileNumber', 'dateOfBirth']
+        missing_fields = [f for f in required_fields if not data.get(f)]
+        if missing_fields:
+            return Response({
+                'error': f"Missing required fields: {', '.join(missing_fields)}"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check if employee already exists
-            if Profile.objects.filter(employeeId=data.get('employeeId')).exists():
-                return Response({
-                    'error': f"Employee with ID {data.get('employeeId')} already exists"
-                }, status=status.HTTP_400_BAD_REQUEST)
+        profile, created = Profile.objects.get_or_create(employeeId=data.get('employeeId'))
 
-            # Upload and store file IDs
-            file_field_mapping = {
-                'profileImage': 'profileImageFileId',
-                'aadhaarFile': 'kyc_aadhaarFileId',
-                'panFile': 'kyc_panFileId',
-                'fatherAadhaarFile': 'fatherAadhaarFileId',
-                'motherAadhaarFile': 'motherAadhaarFileId',
-                'spouseAadhaarFile': 'spouseAadhaarFileId'
-            }
+        additional_roles = safe_json_load(data.get('additionalRoles'), [])
+        data_entitlements = safe_json_load(data.get('dataEntitlements'), [])
+        qualifications_data = safe_json_load(data.get('qualifications'), [])
+        experiences_data = safe_json_load(data.get('experiences'), [])
+        kids_details = safe_json_load(data.get('kidsDetails'), [])
+
+        kyc_details = {
+            'aadhaarNumber': data.get('kyc_aadhaarNumber'),
+            'panNumber': data.get('kyc_panNumber'),
+            'panType': data.get('kyc_panType')
+        }
+
+        family_details = {
+            'fatherAadhaar': data.get('family_fatherAadhaar'),
+            'fatherDob': data.get('family_fatherDob'),
+            'motherAadhaar': data.get('family_motherAadhaar'),
+            'motherDob': data.get('family_motherDob'),
+            'spouseName': data.get('family_spouseName'),
+            'spouseAadhaar': data.get('family_spouseAadhaar'),
+            'spouseDob': data.get('family_spouseDob'),
+            'kidsDetails': kids_details
+        }
+
+        bank_details = {
+            'bankName': data.get('bank_bankName'),
+            'ifscCode': data.get('bank_ifscCode'),
+            'accountNumber': data.get('bank_accountNumber'),
+            'branch': data.get('bank_branch')
+        }
+
+        salary_details = {
+            'netSalary': data.get('salary_netSalary'),
+            'grossSalary': data.get('salary_grossSalary'),
+            'ctc': data.get('salary_ctc')
+        }
+
+        fnf_status = {
+            'remarks': data.get('fnf_remarks')
+        }
+
+        profile.employeeName = data.get('employeeName')
+        profile.fatherName = data.get('fatherName')
+        profile.motherName = data.get('motherName')
+        profile.gender = data.get('gender')
+        profile.mobileNumber = data.get('mobileNumber')
+        profile.bloodGroup = data.get('bloodGroup')
+        profile.maritalStatus = data.get('maritalStatus')
+        profile.guardianNumber = data.get('guardianNumber')
+        profile.dateOfBirth = data.get('dateOfBirth')
+        profile.email = data.get('email')
+        profile.department = data.get('department')
+        profile.designation = data.get('designation')
+        profile.primaryRole = data.get('primaryRole')
+        profile.additionalRoles = additional_roles
+        profile.dataEntitlements = data_entitlements
+        profile.employmentStatus = data.get('employmentStatus')
+        profile.registrationNumber = data.get('registrationNumber')
+        profile.validityDate = data.get('validityDate')
+        profile.kycDetails = kyc_details
+        profile.familyDetails = family_details
+        profile.qualifications = qualifications_data
+        profile.experiences = experiences_data
+        profile.bankDetails = bank_details
+        profile.salaryDetails = salary_details
+        profile.fnfStatus = fnf_status
+        profile.profileImage = data.get('profileImage')
+        profile.created_by = employee_id
+
+        profile.save()
+        serializer = ProfileSerializer(profile)
+        return Response({
+            'success': True,
+            'message': 'Employee profile created/updated successfully',
+            'employee': serializer.data
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    except Exception as e:
+        logger.exception("Employee creation/update failed")
+        return Response({'success': False, 'error': str(e)}, status=500)
 
 
-            for field_name, id_key in file_field_mapping.items():
-                uploaded_file = files.get(field_name)
-                if uploaded_file:
-                    file_id = upload_file_to_gridfs(uploaded_file, uploaded_file.name, uploaded_file.content_type)
-                    data[id_key] = file_id
-
-            # Parse JSON fields
-            additional_roles = safe_json_load(data.get('additionalRoles', []))
-            data_entitlements = safe_json_load(data.get('dataEntitlements', []))
-            qualifications_data = safe_json_load(data.get('qualifications', []))
-            experiences_data = safe_json_load(data.get('experiences', []))
-            kids_details = safe_json_load(data.get('kidsDetails', []))
-
-            # Upload certificates for qualifications
-            for idx, qual in enumerate(qualifications_data):
-                cert_file = files.get(f'qualification_certificate_{idx}')
-                if cert_file:
-                    file_id = upload_file_to_gridfs(cert_file, cert_file.name, cert_file.content_type)
-                    qual['certificateFileId'] = file_id
-
-            # Upload certificates for experiences
-            for idx, exp in enumerate(experiences_data):
-                cert_file = files.get(f'experience_certificate_{idx}')
-                if cert_file:
-                    file_id = upload_file_to_gridfs(cert_file, cert_file.name, cert_file.content_type)
-                    exp['certificateFileId'] = file_id
-
-            # Upload kid Aadhaar files
-            for idx, kid in enumerate(kids_details):
-                aadhaar_file = files.get(f'kid_aadhaar_{idx}')
-                if aadhaar_file:
-                    file_id = upload_file_to_gridfs(aadhaar_file, aadhaar_file.name, aadhaar_file.content_type)
-                    kid['aadhaarFileId'] = file_id
-
-            # Prepare grouped fields
-            kyc_details = {
-                'aadhaarNumber': data.get('kyc_aadhaarNumber', ''),
-                'panNumber': data.get('kyc_panNumber', ''),
-                'panType': data.get('kyc_panType', ''),
-                'aadhaarFileId': data.get('aadhaarFileId') or data.get('kyc_aadhaarFileId'),
-                'panFileId': data.get('panFileId') or data.get('kyc_panFileId'),
-            }
-
-
-            family_details = {
-                'fatherAadhaar': data.get('family_fatherAadhaar', ''),
-                'fatherDob': data.get('family_fatherDob'),
-                'fatherAadhaarFileId': data.get('fatherAadhaarFileId'),
-                'motherAadhaar': data.get('family_motherAadhaar', ''),
-                'motherDob': data.get('family_motherDob'),
-                'motherAadhaarFileId': data.get('motherAadhaarFileId'),
-                'spouseName': data.get('family_spouseName', ''),
-                'spouseAadhaar': data.get('family_spouseAadhaar', ''),
-                'spouseDob': data.get('family_spouseDob'),
-                'spouseAadhaarFileId': data.get('spouseAadhaarFileId'),
-                'kidsDetails': kids_details,
-            }
-
-            bank_details = {
-                'bankName': data.get('bank_bankName', ''),
-                'ifscCode': data.get('bank_ifscCode', ''),
-                'accountNumber': data.get('bank_accountNumber', ''),
-                'branch': data.get('bank_branch', ''),
-            }
-
-            salary_details = {
-                'netSalary': data.get('salary_netSalary', ''),
-                'grossSalary': data.get('salary_grossSalary', ''),
-                'ctc': data.get('salary_ctc', ''),
-            }
-
-            fnf_status = {
-                'remarks': data.get('fnf_remarks', ''),
-            }
-
-            profile_data = {
-                'employeeId': data.get('employeeId'),
-                'employeeName': data.get('employeeName'),
-                'fatherName': data.get('fatherName', ''),
-                'motherName': data.get('motherName', ''),
-                'gender': data.get('gender'),
-                'mobileNumber': data.get('mobileNumber'),
-                'bloodGroup': data.get('bloodGroup', ''),
-                'maritalStatus': data.get('maritalStatus', ''),
-                'guardianNumber': data.get('guardianNumber', ''),
-                'dateOfBirth': data.get('dateOfBirth'),
-                'email': data.get('email'),
-                'department': data.get('department', ''),
-                'designation': data.get('designation', ''),
-                'primaryRole': data.get('primaryRole', ''),
-                'additionalRoles': additional_roles,
-                'dataEntitlements': data_entitlements,
-                'employmentStatus': data.get('employmentStatus', ''),
-                'registrationNumber': data.get('registrationNumber', ''),
-                'validityDate': data.get('validityDate'),
-                'kycDetails': kyc_details,
-                'familyDetails': family_details,
-                'qualifications': qualifications_data,
-                'experiences': experiences_data,
-                'bankDetails': bank_details,
-                'salaryDetails': salary_details,
-                'fnfStatus': fnf_status,
-                'profileImage': data.get('profileImage'),
-                'created_by': employee_id,
-            }
-
-            serializer = ProfileSerializer(data=profile_data)
-
-            if serializer.is_valid():
-                profile = serializer.save()
-                return Response({
-                    'success': True,
-                    'message': 'Employee profile created successfully',
-                    'employee': {
-                        'employeeId': profile.employeeId,
-                        'employeeName': profile.employeeName,
-                        'email': profile.email,
-                        'department': profile.department,
-                        'designation': profile.designation,
-                        'created_date': profile.created_date.isoformat() if profile.created_date else None,
-                    }
-                }, status=status.HTTP_201_CREATED)
-
-            else:
-                logger.error(f"Serializer validation failed: {serializer.errors}")
-                return Response({
-                    'success': False,
-                    'error': 'Validation failed',
-                    'details': serializer.errors
-                }, status=status.HTTP_400_BAD_REQUEST)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {str(e)}")
-            return Response({'success': False, 'error': 'Invalid JSON', 'details': str(e)}, status=400)
-
-        except Exception as e:
-            logger.exception("Unexpected error")
-            return Response({'success': False, 'error': str(e)}, status=500)
-
-    elif request.method == 'GET':
-        try:
-            profiles = Profile.objects.all().order_by('-created_date')
-            serializer = ProfileSerializer(profiles, many=True)
-            return Response({'success': True, 'employees': serializer.data}, status=200)
-
-        except Exception as e:
-            logger.error(f"Error fetching profiles: {str(e)}")
-            return Response({'success': False, 'error': str(e)}, status=500)
 import ast
 
-def safe_json_load(value):
-    if isinstance(value, str):
-        try:
-            return ast.literal_eval(value)  # safely converts "['a', 'b']" to ['a', 'b']
-        except Exception:
-            return []
-    return value if value else []
+
 
 @api_view(['PUT'])
 @permission_classes([HasRoleAndDataPermission])
@@ -375,6 +338,7 @@ def update_employee(request, employee_id):
             'aadhaarNumber': data.get('kyc_aadhaarNumber', ''),
             'panNumber': data.get('kyc_panNumber', ''),
             'panType': data.get('kyc_panType', ''),
+            'uanNumber': data.get('kyc_unaNumber', ''),
             'aadhaarFileId': data.get('aadhaarFileId'),
             'panFileId': data.get('panFileId'),
         }
@@ -433,6 +397,7 @@ def update_employee(request, employee_id):
         profile.employmentStatus = data.get('employmentStatus', profile.employmentStatus)
         profile.registrationNumber = data.get('registrationNumber', profile.registrationNumber)
         profile.validityDate = data.get('validityDate', profile.validityDate)
+        profile.created_by = updated_by  # Update who modified the profile
         
         # Update JSON fields
         profile.kycDetails = kyc_details
@@ -444,8 +409,8 @@ def update_employee(request, employee_id):
         profile.fnfStatus = fnf_status
         
         # Update profile image if provided
-        if data.get('profileImageFileId'):
-            profile.profileImage = data.get('profileImageFileId')
+        if data.get('profileImage'):
+            profile.profileImage = data.get('profileImage')
         
         # Save the updated profile
         profile.save()
@@ -498,38 +463,6 @@ def get_employee_by_id(request, employee_id):
         logger.error(f"Error fetching employee by ID: {str(e)}")
         return Response({"success": False, "message": "Error retrieving employee."}, status=500)
 
-
-from rest_framework.decorators import api_view, parser_classes
-from rest_framework.response import Response
-from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
-from .models import Profile
-from .serializers import ProfileSerializer
-import logging
-
-logger = logging.getLogger(__name__)
-
-@api_view(['PUT'])
-@parser_classes([MultiPartParser, FormParser])  # Required for FormData/file handling
-@permission_classes([HasRoleAndDataPermission])
-def update_employee(request, employee_id):
-    try:
-        profile = Profile.objects.filter(employeeId=employee_id).first()
-
-        if not profile:
-            return Response({"success": False, "message": "Employee not found."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = ProfileSerializer(profile, data=request.data, partial=True)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response({"success": True, "message": "Employee updated successfully.", "employee": serializer.data}, status=status.HTTP_200_OK)
-        else:
-            return Response({"success": False, "message": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-    except Exception as e:
-        logger.error(f"Update error for employee {employee_id}: {str(e)}")
-        return Response({"success": False, "message": f"Server error: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -596,40 +529,6 @@ def serve_file(request, file_id):
         raise Http404(f"File not found or invalid: {str(e)}")
 
     
-@api_view(['GET'])
-def download_gridfs(request, file_id):
-    """Download file from GridFS"""
-    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
-    # collection = db['backend_diagnostics_Designation']
-    fs = gridfs.GridFS(db)
-    if not fs:
-        return Response({
-            'error': 'GridFS not available'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    try:
-        # Get file from GridFS
-        grid_out = fs.get(ObjectId(file_id))
-        
-        # Create HTTP response
-        response = HttpResponse(
-            grid_out.read(),
-            content_type=grid_out.content_type
-        )
-        response['Content-Disposition'] = f'attachment; filename="{grid_out.filename}"'
-        
-        return response
-        
-    except gridfs.NoFile:
-        return Response({
-            'error': 'File not found'
-        }, status=status.HTTP_404_NOT_FOUND)
-    except Exception as e:
-        logger.error(f"Error downloading file from GridFS: {str(e)}")
-        return Response({
-            'error': 'File download failed'
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['POST', 'GET'])
@@ -759,7 +658,7 @@ db = client[os.getenv('GLOBAL_DB_NAME')]
 
 # Toggle Department Status
 @api_view(['POST', 'GET', 'PUT'])
-@permission_classes([HasRoleAndDataPermission])
+@permission_classes([HasRoleAndDataPermission]) 
 def update_department(request, department_code):
 
     if request.method == 'PUT':

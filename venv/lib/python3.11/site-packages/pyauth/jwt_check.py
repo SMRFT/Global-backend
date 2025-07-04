@@ -119,7 +119,7 @@ def __checkAccessForPageAction(vJson:dict,
    pageId = __permissions.get("PAGE_MAPPING").get(page, "")
    if not pageId:
       for p in __permissions.get("PAGE_MAPPING"):
-         if re.search(p, page):
+         if re.fullmatch(p, page):
             pageId = __permissions.get("PAGE_MAPPING").get(p, "")
             break
    if not pageId:
