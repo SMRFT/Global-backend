@@ -654,7 +654,7 @@ def getprimaryandadditionalrole(request):
 
 
 client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-db = client[os.getenv('GLOBAL_DB_NAME')]
+db = client(os.getenv('GLOBAL_DB_NAME'))
 
 # Toggle Department Status
 @api_view(['POST', 'GET', 'PUT'])
