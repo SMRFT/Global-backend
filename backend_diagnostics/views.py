@@ -76,7 +76,7 @@ def safe_json_load(value):
 def upload_gridfs(request):
     """Upload file to GridFS and return file ID"""
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
+    db = client[os.getenv('GLOBAL_DB_NAME',"Global")]
     fs = gridfs.GridFS(db)
     
     if not fs:
@@ -172,7 +172,7 @@ def safe_json_load(value, default=None):
 def upload_file_to_gridfs(file_obj, filename, content_type, file_type='document', uploaded_by='system'):
     try:
         client = MongoClient(os.getenv("GLOBAL_DB_HOST"))
-        db = client[os.getenv("GLOBAL_DB_NAME")]
+        db = client[os.getenv("GLOBAL_DB_NAME","Global")]
         fs = gridfs.GridFS(db)
 
         file_id = fs.put(
@@ -476,7 +476,7 @@ def get_employees_with_labels(request):
 
         # MongoDB setup
         client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-        db = client[os.getenv('GLOBAL_DB_NAME')]
+        db = client[os.getenv('GLOBAL_DB_NAME',"Global")]
 
         # Fetch all reference collections
         designations = {d['Designation_code']: d['designation'] for d in db['backend_diagnostics_Designation'].find({}, {'_id': 0})}
@@ -510,7 +510,7 @@ import mimetypes
 def serve_file(request, file_id):
     try:
         client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-        db = client[os.getenv('GLOBAL_DB_NAME')]
+        db = client[os.getenv('GLOBAL_DB_NAME','Global')]
         fs = GridFS(db)
 
         file_id = ObjectId(file_id)
@@ -593,7 +593,7 @@ def set_employee_password(request):
 @permission_classes([HasRoleAndDataPermission])
 def get_data_entitlements(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
+    db = client[os.getenv('GLOBAL_DB_NAME',"Global")]
     collection = db['backend_diagnostics_DataEntitlements']
 
     # Extracting all fields excluding '_id'
@@ -625,7 +625,7 @@ def get_data_departments(request):
 @permission_classes([HasRoleAndDataPermission])
 def get_data_designation(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
+    db = client[os.getenv('GLOBAL_DB_NAME','Global')]
     collection = db['backend_diagnostics_Designation']
 
     # Extracting all fields excluding '_id'
@@ -641,7 +641,7 @@ def get_data_designation(request):
 @permission_classes([HasRoleAndDataPermission])
 def getprimaryandadditionalrole(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
+    db = client[os.getenv('GLOBAL_DB_NAME','Global')]
     collection = db['backend_diagnostics_RoleMapping']
 
     # Filter roles with is_active=True
@@ -663,7 +663,7 @@ def update_department(request, department_code):
     if request.method == 'PUT':
         try:
             client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-            db = client[os.getenv('GLOBAL_DB_NAME')]
+            db = client[os.getenv('GLOBAL_DB_NAME','Global')]
             collection = db['backend_diagnostics_Departments']
 
             # Get employee ID and other data from request.data
@@ -722,7 +722,7 @@ def update_designation(request, designation_code):
             data = request.data
 
             client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-            db = client[os.getenv('GLOBAL_DB_NAME')]
+            db = client[os.getenv('GLOBAL_DB_NAME','Global')]
             collection = db['backend_diagnostics_Designation']
 
             # Fetch the current designation details
