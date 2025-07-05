@@ -609,7 +609,7 @@ def get_data_entitlements(request):
 @permission_classes([HasRoleAndDataPermission])
 def get_data_departments(request):
     client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-    db = client[os.getenv('GLOBAL_DB_NAME')]
+    db = client[os.getenv('GLOBAL_DB_NAME','Global')]
     collection = db['backend_diagnostics_Departments']
 
     # Extracting all fields excluding '_id'
