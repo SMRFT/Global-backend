@@ -1,6 +1,7 @@
 from django.urls import path
 from .views import admin_registration ,get_employee_by_id,update_employee,create_employee
-from . import views 
+from . import views
+from django.contrib.auth import views as auth_views 
 
 urlpatterns = [
 
@@ -17,6 +18,9 @@ path('update_department/<str:department_code>/', views.update_department, name='
 path('update_designation/<str:designation_code>/', views.update_designation, name='update_designation'),
 path("get_employee_by_id/<str:employee_id>/", get_employee_by_id),
 path("update_employee/<str:employee_id>/", update_employee),
-path('serve_file/<str:file_id>/', views.serve_file, name="serve_file"),  # Add this line for file serving
+path('serve_file/<str:file_id>/', views.serve_file, name="serve_file"),  
+path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+path('reset-password/', views.reset_password, name='reset_password'),
+path('validate-reset-token/', views.validate_reset_token, name='validate_reset_token'),
 
 ]
