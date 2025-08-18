@@ -139,7 +139,7 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
-
+FRONTEND_URL="https://test.shinova.in/"
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
@@ -151,3 +151,4 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'shanmugahospitalhr@gmail.com'
 EMAIL_HOST_PASSWORD = 'ykrs ylby ssro biwp'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
