@@ -12,8 +12,6 @@ from .models import Profile
 from .serializers import ProfileSerializer
 from django.utils.timezone import now
 import pytz
-from .models import user , GridFSFile
-from .serializers import userSerializer
 from django.contrib.auth.hashers import make_password
 from pymongo import MongoClient
 import os
@@ -195,10 +193,287 @@ import logging, json
 from .models import Profile
 from .serializers import ProfileSerializer
 
+from django.core.mail import send_mail
+from django.conf import settings
+from django.urls import reverse
+from django.contrib.auth.hashers import make_password
+from pymongo import MongoClient
+import secrets
+import string
+from datetime import datetime, timedelta
+import logging
+logger = logging.getLogger(__name__)
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.hashers import make_password, check_password
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+from pymongo import MongoClient
+from django.conf import settings
+from datetime import datetime
+import json
+import logging
 
 logger = logging.getLogger(__name__)
 
+# MongoDB connection
+client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+db = client[os.getenv('GLOBAL_DB_NAME',"Global")]
+users_collection = db['backend_diagnostics_user']
 
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse, HttpResponse
+from django.template import loader
+from django.utils.safestring import mark_safe
+import json
+from datetime import datetime
+from bson.objectid import ObjectId
+from django.contrib.auth.hashers import make_password
+
+@csrf_exempt
+def reset_password(request):
+    """Render form on GET and handle password reset on POST"""
+    if request.method == 'GET':
+        # Get token from query param
+        token = request.GET.get('token')
+        if not token:
+            return HttpResponse("<h3>Invalid or missing token</h3>")
+
+        # Render HTML form with token injected into JavaScript
+        template = loader.get_template('reset_password_form.html')
+        context = {
+            'token': mark_safe(f'"{token}"')  # token will be inserted as a JS string
+        }
+        return HttpResponse(template.render(context, request))
+
+    elif request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            token = data.get('token')
+            new_password = data.get('password')
+            confirm_password = data.get('confirm_password')
+            
+            if not all([token, new_password, confirm_password]):
+                return JsonResponse({
+                    'error': 'Token, password, and confirm_password are required'
+                }, status=400)
+            
+            if new_password != confirm_password:
+                return JsonResponse({
+                    'error': 'Passwords do not match'
+                }, status=400)
+            
+            if len(new_password) < 8:
+                return JsonResponse({
+                    'error': 'Password must be at least 8 characters long'
+                }, status=400)
+            
+            # Find user with valid reset token
+            user = users_collection.find_one({
+                'reset_token': token,
+                'reset_token_expires': {'$gt': datetime.utcnow()}
+            })
+            
+            if not user:
+                return JsonResponse({
+                    'error': 'Invalid or expired reset token'
+                }, status=400)
+            
+            # Update user password and clear reset token
+            users_collection.update_one(
+                {'_id': user['_id']},
+                {
+                    '$set': {
+                        'password': make_password(new_password),
+                        'is_password_set': True,
+                        'updated_at': datetime.utcnow()
+                    },
+                    '$unset': {
+                        'reset_token': '',
+                        'reset_token_expires': ''
+                    }
+                }
+            )
+            
+            logger.info(f"Password reset successful for employee: {user['employee_id']}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'Password reset successfully'
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            logger.error(f"Password reset failed: {str(e)}")
+            return JsonResponse({'error': 'Internal server error'}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+@csrf_exempt
+def validate_reset_token(request):
+    """Validate if reset token is still valid"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        token = data.get('token')
+        
+        if not token:
+            return JsonResponse({'error': 'Token is required'}, status=400)
+        
+        # Find user with valid reset token
+        user = users_collection.find_one({
+            'reset_token': token,
+            'reset_token_expires': {'$gt': datetime.utcnow()}
+        })
+        
+        if not user:
+            return JsonResponse({
+                'valid': False,
+                'error': 'Invalid or expired reset token'
+            }, status=400)
+        
+        return JsonResponse({
+            'valid': True,
+            'employee_name': user['employee_name'],
+            'email': user['email']
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"Token validation failed: {str(e)}")
+        return JsonResponse({'error': 'Internal server error'}, status=500)
+
+def generate_random_password(length=12):
+    """Generate a random password"""
+    characters = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(characters) for _ in range(length))
+
+def generate_reset_token():
+    """Generate a secure reset token"""
+    return secrets.token_urlsafe(32)
+
+def send_employee_welcome_email(employee_email, employee_name, reset_token):
+    """Send welcome email with password reset link"""
+    try:
+        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
+        
+        subject = "Welcome to the Company - Set Your Password"
+        message = f"""
+        Dear {employee_name},
+
+        Welcome to our company! Your employee account has been created successfully.
+
+        To get started, please set your password by clicking the link below:
+        {reset_url}
+
+        This link will expire in 24 hours for security reasons.
+
+        If you have any questions, please contact the HR department.
+
+        Best regards,
+        HR Team
+        """
+        
+        html_message = f"""
+        <html>
+        <body>
+            <h2>Welcome to the Company!</h2>
+            <p>Dear {employee_name},</p>
+            
+            <p>Welcome to our company! Your employee account has been created successfully.</p>
+            
+            <p>To get started, please set your password by clicking the button below:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{reset_url}" 
+                   style="background-color: #007bff; color: white; padding: 12px 24px; 
+                          text-decoration: none; border-radius: 5px; display: inline-block;">
+                    Set Your Password
+                </a>
+            </div>
+            
+            <p><strong>Note:</strong> This link will expire in 24 hours for security reasons.</p>
+            
+            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+            <p><a href="{reset_url}">{reset_url}</a></p>
+            
+            <p>If you have any questions, please contact the HR department.</p>
+            
+            <p>Best regards,<br>HR Team</p>
+        </body>
+        </html>
+        """
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[employee_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+        
+        logger.info(f"Welcome email sent successfully to {employee_email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send welcome email to {employee_email}: {str(e)}")
+        return False
+
+def create_user_in_mongodb(employee_data):
+    """Create user document in MongoDB users collection"""
+    try:
+        # Generate temporary password and reset token
+        temp_password = generate_random_password()
+        reset_token = generate_reset_token()
+        
+        # Create user document
+        user_doc = {
+            'employeeId': employee_data['employeeId'],
+            'password': make_password(temp_password),  # Hash the password
+            'is_active': True,
+            'is_password_set': False,  # Flag to track if user has set their password
+            'reset_token': reset_token,
+            'reset_token_expires': datetime.utcnow() + timedelta(hours=24),
+            'created_at': datetime.utcnow(),
+            'updated_at': datetime.utcnow(),
+
+        }
+        
+        # Check if user already exists
+        existing_user = users_collection.find_one({'employee_id': employee_data['employeeId']})
+        
+        if existing_user:
+            # Update existing user with new reset token
+            users_collection.update_one(
+                {'employee_id': employee_data['employeeId']},
+                {
+                    '$set': {
+                        'email': employee_data['email'],
+                        'reset_token': reset_token,
+                        'reset_token_expires': datetime.utcnow() + timedelta(hours=24),
+                        'updated_at': datetime.utcnow(),
+                    }
+                }
+            )
+            logger.info(f"Updated existing user for employee ID: {employee_data['employeeId']}")
+        else:
+            # Insert new user
+            result = users_collection.insert_one(user_doc)
+            logger.info(f"Created new user for employee ID: {employee_data['employeeId']}, MongoDB ID: {result.inserted_id}")
+        
+        return reset_token
+        
+    except Exception as e:
+        logger.error(f"Failed to create/update user in MongoDB: {str(e)}")
+        raise
 
 @api_view(['POST'])
 @permission_classes([HasRoleAndDataPermission])
@@ -206,9 +481,8 @@ def create_employee(request):
     try:
         data = request.data.copy()
         employee_id = data.get('auth-user-name') or data.get('employee_id', 'system')
-
         logger.info(f"Received employee data for ID: {data.get('employeeId')}")
-
+        
         required_fields = ['employeeId', 'employeeName', 'email', 'gender', 'mobileNumber', 'dateOfBirth']
         missing_fields = [f for f in required_fields if not data.get(f)]
         if missing_fields:
@@ -216,20 +490,30 @@ def create_employee(request):
                 'error': f"Missing required fields: {', '.join(missing_fields)}"
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        profile, created = Profile.objects.get_or_create(employeeId=data.get('employeeId'))
+        # Validate email format
+        from django.core.validators import validate_email
+        from django.core.exceptions import ValidationError
+        try:
+            validate_email(data.get('email'))
+        except ValidationError:
+            return Response({
+                'error': "Invalid email format"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
+        profile, created = Profile.objects.get_or_create(employeeId=data.get('employeeId'))
+        
         additional_roles = safe_json_load(data.get('additionalRoles'), [])
         data_entitlements = safe_json_load(data.get('dataEntitlements'), [])
         qualifications_data = safe_json_load(data.get('qualifications'), [])
         experiences_data = safe_json_load(data.get('experiences'), [])
         kids_details = safe_json_load(data.get('kidsDetails'), [])
-
+        
         kyc_details = {
             'aadhaarNumber': data.get('kyc_aadhaarNumber'),
             'panNumber': data.get('kyc_panNumber'),
             'panType': data.get('kyc_panType')
         }
-
+        
         family_details = {
             'fatherAadhaar': data.get('family_fatherAadhaar'),
             'fatherDob': data.get('family_fatherDob'),
@@ -240,24 +524,25 @@ def create_employee(request):
             'spouseDob': data.get('family_spouseDob'),
             'kidsDetails': kids_details
         }
-
+        
         bank_details = {
             'bankName': data.get('bank_bankName'),
             'ifscCode': data.get('bank_ifscCode'),
             'accountNumber': data.get('bank_accountNumber'),
             'branch': data.get('bank_branch')
         }
-
+        
         salary_details = {
             'netSalary': data.get('salary_netSalary'),
             'grossSalary': data.get('salary_grossSalary'),
             'ctc': data.get('salary_ctc')
         }
-
+        
         fnf_status = {
             'remarks': data.get('fnf_remarks')
         }
 
+        # Update profile fields
         profile.employeeName = data.get('employeeName')
         profile.fatherName = data.get('fatherName')
         profile.motherName = data.get('motherName')
@@ -285,21 +570,52 @@ def create_employee(request):
         profile.fnfStatus = fnf_status
         profile.profileImage = data.get('profileImage')
         profile.created_by = employee_id
-
         profile.save()
+
+        # Create user in MongoDB and get reset token
+        try:
+            reset_token = create_user_in_mongodb(data)
+            
+            # Send welcome email with password reset link
+            email_sent = send_employee_welcome_email(
+                employee_email=data.get('email'),
+                employee_name=data.get('employeeName'),
+                reset_token=reset_token
+            )
+            
+            if not email_sent:
+                logger.warning(f"Employee created but email failed to send to {data.get('email')}")
+                
+        except Exception as e:
+            logger.error(f"Failed to create user or send email: {str(e)}")
+            # Continue with employee creation even if user creation/email fails
+            # You might want to handle this differently based on your requirements
+
         serializer = ProfileSerializer(profile)
-        return Response({
+        
+        response_data = {
             'success': True,
             'message': 'Employee profile created/updated successfully',
             'employee': serializer.data
-        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+        }
+        
+        # Add email status to response
+        if 'email_sent' in locals():
+            response_data['email_sent'] = email_sent
+            if email_sent:
+                response_data['message'] += ' and welcome email sent'
+            else:
+                response_data['message'] += ' but welcome email failed to send'
+        
+        return Response(
+            response_data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+        )
 
     except Exception as e:
         logger.exception("Employee creation/update failed")
         return Response({'success': False, 'error': str(e)}, status=500)
 
-
-import ast
 
 
 

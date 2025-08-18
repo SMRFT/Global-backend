@@ -87,13 +87,4 @@ class GridFSFileSerializer(serializers.ModelSerializer):
         model = GridFSFile
         fields = '__all__'
 
-        
-from rest_framework import serializers
-from .models import user
-
-class userSerializer(serializers.ModelSerializer):
-    id = ObjectIdField(read_only=True)
-    class Meta:
-        model = user
-        fields = '__all__'
-
+    
