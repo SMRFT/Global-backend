@@ -233,53 +233,42 @@ from django.contrib.auth.hashers import make_password
 
 @csrf_exempt
 def reset_password(request):
-    """Render form on GET and handle password reset on POST"""
+    """Render password reset form on GET and handle reset logic on POST."""
     if request.method == 'GET':
         # Get token from query param
         token = request.GET.get('token')
         if not token:
-            return HttpResponse("<h3>Invalid or missing token</h3>")
-
+            return HttpResponse("<h3>Invalid or missing token</h3>", status=400)
         # Render HTML form with token injected into JavaScript
         template = loader.get_template('reset_password_form.html')
         context = {
             'token': mark_safe(f'"{token}"')  # token will be inserted as a JS string
         }
         return HttpResponse(template.render(context, request))
-
     elif request.method == 'POST':
         try:
             data = json.loads(request.body)
             token = data.get('token')
             new_password = data.get('password')
             confirm_password = data.get('confirm_password')
-            
+            # Validate required fields
             if not all([token, new_password, confirm_password]):
                 return JsonResponse({
                     'error': 'Token, password, and confirm_password are required'
                 }, status=400)
-            
             if new_password != confirm_password:
-                return JsonResponse({
-                    'error': 'Passwords do not match'
-                }, status=400)
-            
+                return JsonResponse({'error': 'Passwords do not match'}, status=400)
             if len(new_password) < 8:
                 return JsonResponse({
                     'error': 'Password must be at least 8 characters long'
                 }, status=400)
-            
             # Find user with valid reset token
             user = users_collection.find_one({
                 'reset_token': token,
                 'reset_token_expires': {'$gt': datetime.utcnow()}
             })
-            
             if not user:
-                return JsonResponse({
-                    'error': 'Invalid or expired reset token'
-                }, status=400)
-            
+                return JsonResponse({'error': 'Invalid or expired reset token'}, status=400)
             # Update user password and clear reset token
             users_collection.update_one(
                 {'_id': user['_id']},
@@ -295,20 +284,18 @@ def reset_password(request):
                     }
                 }
             )
-            
-            logger.info(f"Password reset successful for employee: {user['employee_id']}")
-            
+            # :white_check_mark: Use a safe identifier for logging
+            identifier = user.get('employee_id') or user.get('email') or str(user.get('_id'))
+            logger.info(f"Password reset successful for user: {identifier}")
             return JsonResponse({
                 'success': True,
                 'message': 'Password reset successfully'
             })
-            
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON'}, status=400)
         except Exception as e:
-            logger.error(f"Password reset failed: {str(e)}")
+            logger.exception(f"Password reset failed: {str(e)}")
             return JsonResponse({'error': 'Internal server error'}, status=500)
-
     else:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -1083,3 +1070,4 @@ def update_designation(request, designation_code):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+
