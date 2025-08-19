@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-lrbwaxez&q_!zk!xed7-*cx1d12%qwjaqshyorci3*)8$8r00v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['103.205.141.149','node221456-env-5683222.in1.cloudlets.co.in','env-5683222.in1.cloudlets.co.in','127.0.0.1','test.shinova.in']
+ALLOWED_HOSTS = ['103.205.141.149','node221456-env-5683222.in1.cloudlets.co.in','env-5683222.in1.cloudlets.co.in','127.0.0.1','shinova.in1.cloudlets.co.in','shinova.in']
 
 
 # Application definition
@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework_simplejwt',
-    'corsheaders',
+        'corsheaders',
     'backend_diagnostics',
 ]
 
@@ -51,7 +51,6 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -64,7 +63,6 @@ MIDDLEWARE = [
         'corsheaders.middleware.CorsMiddleware',
 ]
 
-# URL configuration
 ROOT_URLCONF = 'diagnostics.urls'
 
 TEMPLATES = [
@@ -84,7 +82,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'diagnostics.wsgi.application'
-
+FRONTEND_URL="http://127.0.0.1:6553/_b_a_c_k_e_n_d/Global/"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -95,7 +93,7 @@ import certifi
 DATABASES = {
     'default': {
         'ENGINE': 'djongo',
-        'NAME': os.getenv("GLOBAL_DB_NAME"),
+        'NAME': os.getenv("GLOBAL_DB_NAME","Global"),
         'ENFORCE_SCHEMA': False,
         'CLIENT': {
             'host': os.getenv("GLOBAL_DB_HOST"),
@@ -133,11 +131,8 @@ USE_I18N = True
 
 USE_TZ = True
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 
-FRONTEND_URL="https://test.shinova.in/_b_a_c_k_e_n_d/Global/"
 STATIC_URL = 'static/'
 
 # Default primary key field type
@@ -145,6 +140,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+FRONTEND_URL="https://shinova.in/_b_a_c_k_e_n_d/Global/"
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
