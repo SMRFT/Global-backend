@@ -167,7 +167,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-FRONTEND_URL="http://127.0.0.1:6553"
+FRONTEND_URL="http://127.0.0.1:6553/_b_a_c_k_e_n_d/Global/"
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
