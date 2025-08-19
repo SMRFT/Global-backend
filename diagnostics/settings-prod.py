@@ -131,7 +131,7 @@ USE_I18N = True
 
 USE_TZ = True
 
-FRONTEND_URL="https://shinova.in/_b_a_c_k_e_n_d/Global/"
+FRONTEND_URL="https://shinova.in/_b_a_c_k_e_n_d/Global"
 
 STATIC_URL = 'static/'
 
@@ -146,5 +146,6 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'shanmugahospitalhr@gmail.com'
 EMAIL_HOST_PASSWORD = 'ykrs ylby ssro biwp'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 
 
