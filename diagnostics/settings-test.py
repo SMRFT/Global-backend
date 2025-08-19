@@ -137,13 +137,14 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 
-
+FRONTEND_URL="https://test.shinova.in/_b_a_c_k_e_n_d/Global/"
 STATIC_URL = 'static/'
-FRONTEND_URL="https://test.shinova.in/"
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -152,3 +153,4 @@ EMAIL_HOST_USER = 'shanmugahospitalhr@gmail.com'
 EMAIL_HOST_PASSWORD = 'ykrs ylby ssro biwp'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
