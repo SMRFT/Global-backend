@@ -13,7 +13,7 @@ PAGE_MAPPING = {
     '/_b_a_c_k_e_n_d/Global/get_employee_by_id/.*/':'GL-P-ED',
 
     '/_b_a_c_k_e_n_d/Global/serve_file/': 'GL-P-ED',
-    r'^/_b_a_c_k_e_n_d/Global/update_employee(?:/[^/]+)+/$': 'GL-P-ED',  # Regex for update_employee with any employee_id
+    r'^/_b_a_c_k_e_n_d/Global/update_employee/.*/': 'GL-P-ED',  # Regex for update_employee with any employee_id
 
     
     '/_b_a_c_k_e_n_d/Global/update_department/.*/':'GL-P-EAD',
@@ -58,4 +58,5 @@ GEN_ACTION_MAPPING = {
     'GET': 'R',
     'DISPATCH': 'RW',  # ✅ Added dispatch mapping
 }
+
 
