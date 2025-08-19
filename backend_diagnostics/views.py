@@ -296,7 +296,7 @@ def reset_password(request):
                 }
             )
             
-            logger.info(f"Password reset successful for employee: {user['employee_id']}")
+            logger.info(f"Password reset successful for employee: {user['employeeId']}")
             
             return JsonResponse({
                 'success': True,
@@ -361,14 +361,16 @@ def generate_reset_token():
 
 def send_employee_welcome_email(employee_email, employee_name, reset_token):
     """Send welcome email with password reset link"""
+
     try:
-        reset_url = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
-        
-        subject = "Welcome to the Company - Set Your Password"
+        reset_url = f"{settings.FRONTEND_URL}reset-password?token={reset_token}"
+
+        subject = "Welcome to Shanmuga Hospital Limited - Set Your Password"
+
         message = f"""
         Dear {employee_name},
 
-        Welcome to our company! Your employee account has been created successfully.
+        Welcome to Shanmuga Hospital Limited! Your employee Profile has been created successfully.
 
         To get started, please set your password by clicking the link below:
         {reset_url}
@@ -380,37 +382,37 @@ def send_employee_welcome_email(employee_email, employee_name, reset_token):
         Best regards,
         HR Team
         """
-        
+
         html_message = f"""
         <html>
         <body>
-            <h2>Welcome to the Company!</h2>
+            <h2>Welcome to Shanmuga Hospital Limited!</h2>
             <p>Dear {employee_name},</p>
-            
-            <p>Welcome to our company! Your employee account has been created successfully.</p>
-            
+
+            <p>Welcome to Shanmuga Hospital Limited! Your employee Profile has been created successfully.</p>
+
             <p>To get started, please set your password by clicking the button below:</p>
-            
+
             <div style="text-align: center; margin: 30px 0;">
-                <a href="{reset_url}" 
-                   style="background-color: #007bff; color: white; padding: 12px 24px; 
-                          text-decoration: none; border-radius: 5px; display: inline-block;">
-                    Set Your Password
+                <a href="{reset_url}"  
+                   style="background-color: #007bff; color: white; padding: 12px 24px;  
+                          text-decoration: none; border-radius: 5px; display: inline-block;"> 
+                    Set Your Password 
                 </a>
             </div>
-            
+
             <p><strong>Note:</strong> This link will expire in 24 hours for security reasons.</p>
-            
+
             <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
             <p><a href="{reset_url}">{reset_url}</a></p>
-            
+
             <p>If you have any questions, please contact the HR department.</p>
-            
-            <p>Best regards,<br>HR Team</p>
+
+            <p>Best regards,<br>HR Team<br>Shanmuga Hospital Limited</p>
         </body>
         </html>
         """
-        
+
         send_mail(
             subject=subject,
             message=message,
@@ -419,13 +421,14 @@ def send_employee_welcome_email(employee_email, employee_name, reset_token):
             html_message=html_message,
             fail_silently=False,
         )
-        
+
         logger.info(f"Welcome email sent successfully to {employee_email}")
         return True
-        
+
     except Exception as e:
         logger.error(f"Failed to send welcome email to {employee_email}: {str(e)}")
         return False
+
 
 def create_user_in_mongodb(employee_data):
     """Create user document in MongoDB users collection"""

@@ -167,12 +167,14 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-FRONTEND_URL="http://127.0.0.1:6553"
+FRONTEND_URL="http://127.0.0.1:6553/_b_a_c_k_e_n_d/Global/"
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'resultssmrft@gmail.com'
-EMAIL_HOST_PASSWORD = 'nfkk krtt htoq asge'  
+EMAIL_HOST_USER = 'shanmugahospitalhr@gmail.com'
+EMAIL_HOST_PASSWORD = 'ykrs ylby ssro biwp'  
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
