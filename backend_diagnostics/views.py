@@ -483,7 +483,7 @@ def create_user_in_mongodb(employee_data):
 def create_employee(request):
     try:
         data = request.data.copy()
-        employee_id = data.get('auth-user-name') or data.get('employee_id', 'system')
+        employee_id = data.get('auth-user-id') or data.get('employee_id', 'system')
         logger.info(f"Received employee data for ID: {data.get('employeeId')}")
         
         required_fields = ['employeeId', 'employeeName', 'email', 'gender', 'mobileNumber', 'dateOfBirth']
@@ -620,6 +620,22 @@ def create_employee(request):
         return Response({'success': False, 'error': str(e)}, status=500)
 
 
+def parse_array_field(value):
+    """Convert value into a list, supports JSON, comma-separated string, or list"""
+    if not value:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        try:
+            # Try JSON decode first
+            parsed = json.loads(value)
+            if isinstance(parsed, list):
+                return parsed
+        except Exception:
+            # Fallback: split by comma
+            return [v.strip() for v in value.split(",") if v.strip()]
+    return []
 
 
 @api_view(['PUT'])
@@ -638,19 +654,20 @@ def update_employee(request, employee_id):
             }, status=status.HTTP_404_NOT_FOUND)
         
         # Get the authenticated user ID
-        updated_by = getattr(request.user, 'employee_id', request.user.username)
-        
+
         # Extract all data from request
         data = request.data.copy()
-        
+        lastmodified_by = data.get('auth-user-id')
         logger.info(f"Updating employee {employee_id} with data: {data}")
         
         # Parse JSON fields safely
-        additional_roles = safe_json_load(data.get('additionalRoles', []))
-        data_entitlements = safe_json_load(data.get('dataEntitlements', []))
-        qualifications_data = safe_json_load(data.get('qualifications', []))
-        experiences_data = safe_json_load(data.get('experiences', []))
-        kids_details = safe_json_load(data.get('kidsDetails', []))
+# Parse roles and entitlements
+        additional_roles = parse_array_field(data.get('additionalRoles'))
+        data_entitlements = parse_array_field(data.get('dataEntitlements'))
+        qualifications_data = parse_array_field(data.get('qualifications'))
+        experiences_data = parse_array_field(data.get('experiences'))
+        kids_details = parse_array_field(data.get('kidsDetails'))
+
         
         # Prepare updated KYC details
         kyc_details = {
@@ -716,7 +733,7 @@ def update_employee(request, employee_id):
         profile.employmentStatus = data.get('employmentStatus', profile.employmentStatus)
         profile.registrationNumber = data.get('registrationNumber', profile.registrationNumber)
         profile.validityDate = data.get('validityDate', profile.validityDate)
-        profile.created_by = updated_by  # Update who modified the profile
+        profile.lastmodified_by = lastmodified_by  # Update who modified the profile
         
         # Update JSON fields
         profile.kycDetails = kyc_details
