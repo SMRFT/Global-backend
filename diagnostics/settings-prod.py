@@ -149,4 +149,7 @@ EMAIL_HOST_USER = 'shanmugahospitalhr@gmail.com'
 EMAIL_HOST_PASSWORD = 'ykrs ylby ssro biwp'  
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
+
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
