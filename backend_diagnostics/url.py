@@ -16,11 +16,16 @@ path('get_employees_with_labels/', views.get_employees_with_labels, name='get_da
 path('getprimaryandadditionalrole/', views.getprimaryandadditionalrole, name='getprimaryandadditionalrole'),
  # Department
 path("get_next_department_code/", views.get_next_department_code, name="get_next_department_code"),
-path('update_department/<str:department_id>/', views.update_department, name='update_department'),
+path('update_department/<str:department_code>/', views.update_department, name='update_department'),
+path('addnew_department/', views.addnew_department, name='add_newdepartment'),
+path('addnew_designation/', views.addnew_designation, name='add_newdepartment'),
+
+
+
 
 # Designation
 path("get_next_designation_code/", views.get_next_designation_code, name="get_next_designation_code"),
-path('update_designation/<str:designation_id>/', views.update_designation, name='update_designation'),
+path('update_designation/<str:designation_code>/', views.update_designation, name='update_designation'),
 
 path("get_employee_by_id/<str:employee_id>/", get_employee_by_id),
 path("update_employee/<str:employee_id>/", update_employee),
