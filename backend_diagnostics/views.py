@@ -1091,41 +1091,45 @@ def get_next_department_code(request):
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
-
 from bson import ObjectId
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from datetime import datetime
 
+# ---- DEPARTMENT ----
 @csrf_exempt
-def update_department(request):
-    if request.method == "POST":
+def update_department(request, department_id):
+    if request.method == "PUT":
         try:
             data = json.loads(request.body.decode("utf-8"))
-            department_code = data.get("department_code")
-            department_name = data.get("department_name")
-            description = data.get("description", department_name)
-            created_by = data.get("created_by", "system")
 
-            new_department = {
-                "department_code": department_code,
-                "department_name": department_name,
-                "description": description,
-                "is_active": True,
-                "created_date": datetime.utcnow().isoformat(),
-                "created_by": created_by,
-                "lastmodified_by": created_by,
+            department = departments_col.find_one({"department_code": department_id})
+            if not department:
+                return JsonResponse({"success": False, "error": "Department not found"}, status=404)
+
+            # Toggle is_active
+            new_status = not department.get("is_active", False)
+            update_data = {
+                "is_active": new_status,
+                "lastmodified_by": data.get("lastmodified_by", "system"),
                 "lastmodified_date": datetime.utcnow().isoformat(),
             }
-            result = departments_col.insert_one(new_department)
 
-            # Add the inserted ID as string
-            new_department["_id"] = str(result.inserted_id)
+            departments_col.update_one(
+                {"department_code": department_id},
+                {"$set": update_data}
+            )
 
-            return JsonResponse({"success": True, "data": new_department})
+            updated_department = departments_col.find_one({"department_code": department_id})
+            updated_department["_id"] = str(updated_department["_id"])
+
+            return JsonResponse({"success": True, "data": updated_department, "new_status": new_status})
+
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
-
-
 
 # ---- DESIGNATION ----
 def get_next_designation_code(request):
@@ -1136,35 +1140,46 @@ def get_next_designation_code(request):
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
+from bson import ObjectId
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import json
+from datetime import datetime
+
+# ---- DESIGNATION ----
 @csrf_exempt
-def update_designation(request):
-    if request.method == "POST":
+def update_designation(request, designation_id):
+    if request.method in ["PUT", "POST"]:  # allow PUT or POST
         try:
             data = json.loads(request.body.decode("utf-8"))
-            designation_code = data.get("Designation_code")
-            designation_name = data.get("designation")
-            description = data.get("description", designation_name)
-            created_by = data.get("created_by", "system")
 
-            new_designation = {
-                "Designation_code": designation_code,
-                "designation": designation_name,
-                "description": description,
-                "is_active": True,
-                "created_date": datetime.utcnow().isoformat(),
-                "created_by": created_by,
-                "lastmodified_by": created_by,
+            designation = designations_col.find_one({"Designation_code": designation_id})
+            if not designation:
+                return JsonResponse({"success": False, "error": "Designation not found"}, status=404)
+
+            # Toggle is_active
+            new_status = not designation.get("is_active", False)
+            update_data = {
+                "is_active": new_status,
+                "lastmodified_by": data.get("lastmodified_by", "system"),
                 "lastmodified_date": datetime.utcnow().isoformat(),
             }
-            result = designations_col.insert_one(new_designation)
-            
-            new_designation["_id"] = str(result.inserted_id)
 
-            return JsonResponse({"success": True, "data": new_designation})
+            designations_col.update_one(
+                {"Designation_code": designation_id},
+                {"$set": update_data}
+            )
+
+            updated_designation = designations_col.find_one({"Designation_code": designation_id})
+            updated_designation["_id"] = str(updated_designation["_id"])
+
+            return JsonResponse({"success": True, "data": updated_designation, "new_status": new_status})
+
         except Exception as e:
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
     return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
         
 from django.utils import timezone
 from rest_framework.decorators import api_view
