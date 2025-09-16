@@ -9,7 +9,7 @@ from pyauth.auth import HasRoleAndDataPermission
 from rest_framework.response import Response  
 from rest_framework.decorators import api_view
 from .models import Profile
-from .serializers import ProfileSerializer
+from .serializers import ProfileSerializer,EmployeeBirthdaySerializer
 from django.utils.timezone import now
 import pytz
 from django.contrib.auth.hashers import make_password
@@ -24,6 +24,7 @@ import logging
 from bson import ObjectId
 from django.http import JsonResponse, HttpResponse
 from django.http import JsonResponse,HttpResponse, Http404
+
 from gridfs import GridFS
 logger = logging.getLogger(__name__)
 load_dotenv()
@@ -287,7 +288,8 @@ def reset_password(request):
                     '$set': {
                         'password': make_password(new_password),
                         'is_password_set': True,
-                        'updated_at': datetime.utcnow()
+                        'lastmodified_date': datetime.utcnow(),
+                        'lastmodified_by':user['employeeId'],
                     },
                     '$unset': {
                         'reset_token': '',
@@ -445,8 +447,7 @@ def create_user_in_mongodb(employee_data):
             'is_password_set': False,  # Flag to track if user has set their password
             'reset_token': reset_token,
             'reset_token_expires': datetime.utcnow() + timedelta(hours=24),
-            'created_at': datetime.utcnow(),
-            'updated_at': datetime.utcnow(),
+            'lastmodified_date': datetime.utcnow(),
 
         }
         
@@ -462,7 +463,7 @@ def create_user_in_mongodb(employee_data):
                         'email': employee_data['email'],
                         'reset_token': reset_token,
                         'reset_token_expires': datetime.utcnow() + timedelta(hours=24),
-                        'updated_at': datetime.utcnow(),
+                        'lastmodified_date': datetime.utcnow(),
                     }
                 }
             )
@@ -619,7 +620,65 @@ def create_employee(request):
         logger.exception("Employee creation/update failed")
         return Response({'success': False, 'error': str(e)}, status=500)
 
-
+@api_view(['POST'])
+#@permission_classes([HasRoleAndDataPermission])
+def resend_employee_email(request, employee_id):
+    try:
+        # Query Profile model with employeeId as a string
+        employee = Profile.objects.get(employeeId=employee_id)
+        
+        # Fetch user from MongoDB users_collection
+        user = users_collection.find_one({'employeeId': employee_id})
+        if not user:
+            return JsonResponse(
+                {"success": False, "error": "User not found in authentication database"},
+                status=404
+            )
+        
+        # Generate a new reset token
+        reset_token = secrets.token_urlsafe(32)
+        users_collection.update_one(
+            {'employeeId': employee_id},
+            {
+                '$set': {
+                    'reset_token': reset_token,
+                    'reset_token_expires': datetime.utcnow() + timedelta(hours=24),
+                    'lastmodified_date': datetime.utcnow()
+                }
+            }
+        )
+        
+        # Send welcome email with reset token
+        success = send_employee_welcome_email(
+            employee_email=employee.email,
+            employee_name=employee.employeeName,
+            reset_token=reset_token
+        )
+        if success:
+            logger.info(f"Resent welcome email to {employee.email} for employee ID: {employee_id}")
+            return JsonResponse(
+                {"success": True, "message": "Email resent successfully"},
+                status=200
+            )
+        else:
+            logger.error(f"Failed to resend email to {employee.email}")
+            return JsonResponse(
+                {"success": False, "error": "Failed to resend email"},
+                status=500
+            )
+    except Profile.DoesNotExist:
+        logger.error(f"Employee with ID {employee_id} not found")
+        return JsonResponse(
+            {"success": False, "error": "Employee not found"},
+            status=404
+        )
+    except Exception as e:
+        logger.error(f"Error resending email for employee ID {employee_id}: {str(e)}")
+        return JsonResponse(
+            {"success": False, "error": f"Error resending email: {str(e)}"},
+            status=500
+        )
+    
 def parse_array_field(value):
     """Convert value into a list, supports JSON, comma-separated string, or list"""
     if not value:
@@ -812,13 +871,17 @@ def get_employees_with_labels(request):
 
         # MongoDB setup
         client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-        db = client[os.getenv('GLOBAL_DB_NAME',"Global")]
+        db = client[os.getenv('GLOBAL_DB_NAME', "Global")]
+        users_collection = db['backend_diagnostics_user']
 
         # Fetch all reference collections
         designations = {d['Designation_code']: d['designation'] for d in db['backend_diagnostics_Designation'].find({}, {'_id': 0})}
         departments = {d['department_code']: d['department_name'] for d in db['backend_diagnostics_Departments'].find({}, {'_id': 0})}
         entitlements = {d['DataEntitlementsCode']: d['DataEntitlements'] for d in db['backend_diagnostics_DataEntitlements'].find({}, {'_id': 0})}
         roles = {r['role_code']: r['role_name'] for r in db['backend_diagnostics_RoleMapping'].find({}, {'_id': 0})}
+
+        # Fetch is_password_set for each employee from users_collection
+        user_data = {user['employeeId']: user.get('is_password_set', False) for user in users_collection.find({}, {'employeeId': 1, 'is_password_set': 1, '_id': 0})}
 
         # Match and enrich the employee data
         for emp in employees:
@@ -834,14 +897,19 @@ def get_employees_with_labels(request):
             entitlement_codes = ast.literal_eval(emp.get('dataEntitlements', '[]'))
             emp['data_entitlement_names'] = [entitlements.get(code, 'N/A') for code in entitlement_codes]
 
+            # Add is_password_set from MongoDB user data
+            emp['is_password_set'] = user_data.get(emp.get('employeeId'), False)
+
         return Response({'employees': employees}, status=200)
 
     except Exception as e:
         logger.error(f"Fetch error: {str(e)}")
         return Response({'error': 'Could not fetch enriched employee data'}, status=500)
 
-import os
+import os, re
 import mimetypes
+from datetime import datetime
+
 @api_view(['GET'])
 def serve_file(request, file_id):
     try:
@@ -992,6 +1060,36 @@ def getprimaryandadditionalrole(request):
 
 
 # Toggle Department Status
+# Helper function to generate next code
+MONGO_URI = os.getenv("GLOBAL_DB_HOST",)
+client = MongoClient(MONGO_URI)
+db = client["Global"]  # replace with actual DB name
+departments_col = db["backend_diagnostics_Departments"]
+
+departments_col = db["backend_diagnostics_Departments"]
+designations_col = db["backend_diagnostics_Designation"]
+
+def _generate_next_code(collection, prefix, field):
+    """Helper to generate next code like DEPT003 or DESG005"""
+    last_doc = collection.find_one(
+        {field: {"$regex": f"^{prefix}"}},
+        sort=[(field, -1)]
+    )
+    if last_doc and field in last_doc:
+        match = re.search(rf"{prefix}(\d+)", last_doc[field])
+        if match:
+            number = int(match.group(1)) + 1
+            return f"{prefix}{number:03d}"
+    return f"{prefix}001"
+
+
+# ---- DEPARTMENT ----
+def get_next_department_code(request):
+    try:
+        next_code = _generate_next_code(departments_col, "DEPT", "department_code")
+        return JsonResponse({"success": True, "data": {"department_code": next_code}})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 @api_view(['POST', 'GET', 'PUT'])
 @permission_classes([HasRoleAndDataPermission]) 
 def update_department(request, department_code):
@@ -1103,3 +1201,158 @@ def update_designation(request, designation_code):
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=400)
+
+from bson import ObjectId
+
+@csrf_exempt
+def addnew_department(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            department_code = data.get("department_code")
+            department_name = data.get("department_name")
+            description = data.get("description", department_name)
+            created_by = data.get("created_by", "system")
+
+            new_department = {
+                "department_code": department_code,
+                "department_name": department_name,
+                "description": description,
+                "is_active": True,
+                "created_date": datetime.utcnow().isoformat(),
+                "created_by": created_by,
+                "lastmodified_by": created_by,
+                "lastmodified_date": datetime.utcnow().isoformat(),
+            }
+            result = departments_col.insert_one(new_department)
+
+            # Add the inserted ID as string
+            new_department["_id"] = str(result.inserted_id)
+
+            return JsonResponse({"success": True, "data": new_department})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+    return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+
+
+
+# ---- DESIGNATION ----
+def get_next_designation_code(request):
+    try:
+        next_code = _generate_next_code(designations_col, "DESIG", "Designation_code")
+        return JsonResponse({"success": True, "data": {"Designation_code": next_code}})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+
+@csrf_exempt
+def addnew_designation(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode("utf-8"))
+            designation_code = data.get("Designation_code")
+            designation_name = data.get("designation")
+            description = data.get("description", designation_name)
+            created_by = data.get("created_by", "system")
+
+            new_designation = {
+                "Designation_code": designation_code,
+                "designation": designation_name,
+                "description": description,
+                "is_active": True,
+                "created_date": datetime.utcnow().isoformat(),
+                "created_by": created_by,
+                "lastmodified_by": created_by,
+                "lastmodified_date": datetime.utcnow().isoformat(),
+            }
+            result = designations_col.insert_one(new_designation)
+            
+            new_designation["_id"] = str(result.inserted_id)
+
+            return JsonResponse({"success": True, "data": new_designation})
+        except Exception as e:
+            return JsonResponse({"success": False, "error": str(e)}, status=500)
+
+    return JsonResponse({"success": False, "error": "Invalid request method"}, status=405)
+        
+from django.utils import timezone
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+import logging
+import pytz
+from datetime import date
+
+from pymongo import MongoClient
+import os
+
+from .models import Profile
+from .serializers import EmployeeBirthdaySerializer
+
+logger = logging.getLogger(__name__)
+IST = pytz.timezone("Asia/Kolkata")
+
+# MongoDB setup
+client = MongoClient(os.getenv("GLOBAL_DB_HOST"))
+db = client[os.getenv("GLOBAL_DB_NAME", "Global")]
+dept_col = db["backend_diagnostics_Departments"]
+desig_col = db["backend_diagnostics_Designation"]
+role_col = db["backend_diagnostics_RoleMapping"]
+user_col = db["backend_diagnostics_user"]
+
+
+@api_view(['GET'])
+def get_todays_birthdays(request):
+    try:
+        today = timezone.now().astimezone(IST).date()
+
+        # Fetch all profiles
+        profiles = Profile.objects.all()
+
+        filtered_profiles = []
+        for profile in profiles:
+            if profile.dateOfBirth and profile.dateOfBirth.month == today.month and profile.dateOfBirth.day == today.day:
+                # calculate age
+                profile.age = today.year - profile.dateOfBirth.year - (
+                    (today.month, today.day) < (profile.dateOfBirth.month, profile.dateOfBirth.day)
+                )
+                profile.save(update_fields=["age"])
+                filtered_profiles.append(profile)
+
+        if not filtered_profiles:
+            return Response({"success": False, "message": "No birthdays found today."}, status=200)
+
+        serializer = EmployeeBirthdaySerializer(filtered_profiles, many=True)
+        birthday_data = serializer.data
+
+        # 🔹 Enrich department & designation from Mongo
+        for profile in birthday_data:
+            dept_code = profile.get("department")
+            desig_code = profile.get("designation")
+
+            # Department
+            if dept_code:
+                dept = dept_col.find_one({"department_code": dept_code})
+                if dept:
+                    profile["department"] = dept.get("department_name")
+                else:
+                    logger.warning(f"No department found for code {dept_code}")
+
+            # Designation
+            if desig_code:
+                desig = desig_col.find_one({"Designation_code": desig_code})
+                if desig:
+                    profile["designation"] = desig.get("designation")
+                else:
+                    logger.warning(f"No designation found for code {desig_code}")
+
+        return Response({
+            "success": True,
+            "count": len(filtered_profiles),
+            "birthdays": birthday_data
+        }, status=200)
+
+    except Exception as e:
+        logger.error(f"Error fetching today's birthdays: {str(e)}")
+        return Response({"success": False, "message": "Error retrieving data."}, status=500)
+

@@ -50,6 +50,7 @@ class Profile(models.Model):
     maritalStatus = models.CharField(max_length=20, null=True, blank=True)
     guardianNumber = models.CharField(max_length=15, null=True, blank=True)
     dateOfBirth = models.DateField(null=True, blank=True)
+    age = models.IntegerField(null=True, blank=True)
     email = models.EmailField()
 
     department = models.CharField(max_length=100, null=True, blank=True)
