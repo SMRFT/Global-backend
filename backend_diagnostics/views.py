@@ -621,7 +621,7 @@ def create_employee(request):
         return Response({'success': False, 'error': str(e)}, status=500)
 
 @api_view(['POST'])
-#@permission_classes([HasRoleAndDataPermission])
+@permission_classes([HasRoleAndDataPermission])
 def resend_employee_email(request, employee_id):
     try:
         # Query Profile model with employeeId as a string
@@ -935,61 +935,61 @@ def serve_file(request, file_id):
     
 
 
-@api_view(['POST', 'GET'])
-@permission_classes([HasRoleAndDataPermission])
-def set_employee_password(request):
-    if request.method == 'POST':
-        try:
-            employee_id = request.data.get('auth-user-id')
-            data = request.data.copy()
+# @api_view(['POST', 'GET'])
+# @permission_classes([HasRoleAndDataPermission])
+# def set_employee_password(request):
+#     if request.method == 'POST':
+#         try:
+#             employee_id = request.data.get('auth-user-id')
+#             data = request.data.copy()
 
-            if not data.get('password'):
-                return Response(
-                    {"success": False, "message": "Password is required."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+#             if not data.get('password'):
+#                 return Response(
+#                     {"success": False, "message": "Password is required."},
+#                     status=status.HTTP_400_BAD_REQUEST
+#                 )
 
-            # Secure the password
-            data['password'] = make_password(data['password'])
+#             # Secure the password
+#             data['password'] = make_password(data['password'])
 
-            # Audit fields
-            current_time = now().astimezone(IST)
-            data['is_active'] = True
-            data['created_date'] = current_time
-            data['lastmodified_date'] = current_time
-            data['created_by'] = employee_id or 'system'
-            data['lastmodified_by'] = employee_id or 'system'
+#             # Audit fields
+#             current_time = now().astimezone(IST)
+#             data['is_active'] = True
+#             data['created_date'] = current_time
+#             data['lastmodified_date'] = current_time
+#             data['created_by'] = employee_id or 'system'
+#             data['lastmodified_by'] = employee_id or 'system'
 
-            serializer = userSerializer(data=data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(
-                    {
-                        "success": True,
-                        "message": "Password created successfully.",
-                        "data": serializer.data
-                    },
-                    status=status.HTTP_201_CREATED
-                )
+#             serializer = userSerializer(data=data)
+#             if serializer.is_valid():
+#                 serializer.save()
+#                 return Response(
+#                     {
+#                         "success": True,
+#                         "message": "Password created successfully.",
+#                         "data": serializer.data
+#                     },
+#                     status=status.HTTP_201_CREATED
+#                 )
 
-            return Response(
-                {"success": False, "message": "Validation error", "errors": serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+#             return Response(
+#                 {"success": False, "message": "Validation error", "errors": serializer.errors},
+#                 status=status.HTTP_400_BAD_REQUEST
+#             )
 
-        except Exception as e:
-            return Response(
-                {"success": False, "message": f"Server error: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+#         except Exception as e:
+#             return Response(
+#                 {"success": False, "message": f"Server error: {str(e)}"},
+#                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+#             )
 
-    elif request.method == 'GET':
-        users = user.objects.all()
-        serializer = userSerializer(users, many=True)
-        return Response(
-            {"success": True, "employees": serializer.data},
-            status=status.HTTP_200_OK
-        )
+#     elif request.method == 'GET':
+#         users = user.objects.all()
+#         serializer = userSerializer(users, many=True)
+#         return Response(
+#             {"success": True, "employees": serializer.data},
+#             status=status.HTTP_200_OK
+#         )
 
     
 
@@ -1205,6 +1205,7 @@ def update_designation(request, designation_code):
 from bson import ObjectId
 
 @csrf_exempt
+@permission_classes([HasRoleAndDataPermission]) 
 def addnew_department(request):
     if request.method == "POST":
         try:
@@ -1247,6 +1248,7 @@ def get_next_designation_code(request):
 
 
 @csrf_exempt
+@permission_classes([HasRoleAndDataPermission]) 
 def addnew_designation(request):
     if request.method == "POST":
         try:
@@ -1302,6 +1304,7 @@ user_col = db["backend_diagnostics_user"]
 
 
 @api_view(['GET'])
+@permission_classes([HasRoleAndDataPermission]) 
 def get_todays_birthdays(request):
     try:
         today = timezone.now().astimezone(IST).date()

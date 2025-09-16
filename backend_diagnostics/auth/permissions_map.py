@@ -11,13 +11,19 @@ PAGE_MAPPING = {
     '/_b_a_c_k_e_n_d/Global/update_department/.*/':'GL-P-EAD',
     '/_b_a_c_k_e_n_d/Global/update_designation/.*/':'GL-P-EAD',
     '/_b_a_c_k_e_n_d/Global/get_employee_by_id/.*/':'GL-P-ED',
-
     '/_b_a_c_k_e_n_d/Global/serve_file/': 'GL-P-ED',
-    '/_b_a_c_k_e_n_d/Global/update_employee/.*/': 'GL-P-ED',  # Regex for update_employee with any employee_id
 
-    
+
+    '/_b_a_c_k_e_n_d/Global/update_employee/.*/': 'GL-P-ED', 
+    '/_b_a_c_k_e_n_d/Global/addnew_department/.*/':'GL-P-AND',
+    '/_b_a_c_k_e_n_d/Global/addnew_designation/.*/':'GL-P-AND',
     '/_b_a_c_k_e_n_d/Global/update_department/.*/':'GL-P-EAD',
     '/_b_a_c_k_e_n_d/Global/update_designation/.*/':'GL-P-EAD',
+    '/_b_a_c_k_e_n_d/Global/get_next_department_code/':'GL-P-NDC',
+    '/_b_a_c_k_e_n_d/Global/get_next_designation_code/':'GL-P-NDC',
+    '/_b_a_c_k_e_n_d/Global/employees/birthdays/today/':'GL-P-EBT',
+    '/_b_a_c_k_e_n_d/Global/resend_employee_email/.*':'GL-P-RSE',
+    
 
 
     '/adminreg/':'GL-P-EAD',
