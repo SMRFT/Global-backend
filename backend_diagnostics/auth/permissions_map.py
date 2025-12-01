@@ -21,7 +21,7 @@ PAGE_MAPPING = {
     '/_b_a_c_k_e_n_d/Global/update_designation/.*/':'GL-P-EAD',
     '/_b_a_c_k_e_n_d/Global/get_next_department_code/':'GL-P-NDC',
     '/_b_a_c_k_e_n_d/Global/get_next_designation_code/':'GL-P-NDC',
-    '/_b_a_c_k_e_n_d/Global/employees/birthdays/today/':'GL-P-EBT',
+    '/_b_a_c_k_e_n_d/Global/employees_birthdays_today/':'GL-P-EBT',
     '/_b_a_c_k_e_n_d/Global/resend_employee_email/.*':'GL-P-RSE',
     
 

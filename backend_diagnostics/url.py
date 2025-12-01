@@ -34,6 +34,6 @@ path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), n
 path('reset-password/', views.reset_password, name='reset_password'),
 path('validate-reset-token/', views.validate_reset_token, name='validate_reset_token'),
 path('resend_employee_email/<str:employee_id>/', views.resend_employee_email, name='resend_employee_email'),
-path('employees/birthdays/today/', views.get_todays_birthdays, name='employee-birthdays-today'),
+path('employees_birthdays_today/', views.get_todays_birthdays, name='employee-birthdays-today'),
 
 ]
