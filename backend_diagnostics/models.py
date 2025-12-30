@@ -3,6 +3,10 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password
 from bson import ObjectId
+from datetime import datetime
+import pytz
+
+IST = pytz.timezone("Asia/Kolkata")
 
 class ObjectIdField(models.Field):
     """ Custom field to store ObjectId """
@@ -94,5 +98,19 @@ class GridFSFile(models.Model):
 
     class Meta:
         db_table = 'gridfs_files'
+
+
+
+class user(models.Model):
+    employeeId = models.CharField(max_length=50, unique=True, primary_key=True)
+    password = models.CharField(max_length=100)
+    is_active = models.BooleanField(default=True)  # Sets is_active to True by default
+    created_date = models.DateTimeField(default=lambda: now().astimezone(IST))  # Indian Timezone
+    created_by = models.CharField(max_length=100, default='system')  # Default 'system'
+    lastmodified_by = models.CharField(max_length=100, default='system')  # Default 'system'
+    lastmodified_date = models.DateTimeField(default=lambda: now().astimezone(IST))  # Indian Timezone
+    is_password_set = models.BooleanField(default=False)
+    def __str__(self):
+        return self.employeeId
         
         
