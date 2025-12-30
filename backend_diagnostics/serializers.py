@@ -137,3 +137,11 @@ class EmployeeBirthdaySerializer(serializers.ModelSerializer):
         desig = desig_col.find_one({"Designation_code": obj.designation})
         return desig.get("designation") if desig else None
 
+from rest_framework import serializers
+from .models import user
+
+class userSerializer(serializers.ModelSerializer):
+    id = ObjectIdField(read_only=True)
+    class Meta:
+        model = user
+        fields = '__all__'

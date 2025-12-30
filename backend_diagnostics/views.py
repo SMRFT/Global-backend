@@ -1358,4 +1358,58 @@ def get_todays_birthdays(request):
     except Exception as e:
         logger.error(f"Error fetching today's birthdays: {str(e)}")
         return Response({"success": False, "message": "Error retrieving data."}, status=500)
+    
 
+from .serializers import userSerializer
+from .models import user
+from django.contrib.auth.hashers import identify_hasher
+from django.utils.timezone import now
+from rest_framework.response import Response
+from rest_framework import status
+
+@api_view(['PATCH'])
+@permission_classes([HasRoleAndDataPermission])
+def set_employee_password(request):
+    auth_user_id = request.data.get('auth-user-id')
+    employee_id = request.data.get("employeeId")
+    password = request.data.get("password")
+
+    if not employee_id or not password:
+        return Response(
+            {"error": "employeeId and password are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 🔍 Always update existing document
+    user_obj = user.objects.filter(employeeId=employee_id).first()
+    if not user_obj:
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # 🔐 Hash only if needed
+    try:
+        identify_hasher(password)
+    except ValueError:
+        password = make_password(password)
+
+    # 🔒 Direct field update (NO serializer = NO duplicates)
+    user_obj.password = password
+    user_obj.is_password_set = True
+    user_obj.is_active = True
+    user_obj.lastmodified_by = auth_user_id
+    user_obj.lastmodified_date = now().astimezone(IST)
+
+    user_obj.save()
+
+    return Response(
+        {"message": "Password updated successfully"},
+        status=status.HTTP_200_OK
+    )
+
+
+    # elif request.method == 'GET':
+    #     users = user.objects.all()
+    #     serializer = userSerializer(users, many=True)
+    #     return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
