@@ -55,7 +55,7 @@ class Profile(models.Model):
     guardianNumber = models.CharField(max_length=15, null=True, blank=True)
     dateOfBirth = models.DateField(null=True, blank=True)
     age = models.IntegerField(null=True, blank=True)
-    email = models.EmailField()
+    email = models.EmailField(blank=True)
 
     department = models.CharField(max_length=100, null=True, blank=True)
     designation = models.CharField(max_length=100, null=True, blank=True)

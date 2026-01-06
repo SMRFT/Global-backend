@@ -487,7 +487,7 @@ def create_employee(request):
         employee_id = data.get('auth-user-id') or data.get('employee_id', 'system')
         logger.info(f"Received employee data for ID: {data.get('employeeId')}")
         
-        required_fields = ['employeeId', 'employeeName', 'email', 'gender', 'mobileNumber', 'dateOfBirth']
+        required_fields = ['employeeId', 'employeeName', 'gender', 'mobileNumber', 'dateOfBirth']
         missing_fields = [f for f in required_fields if not data.get(f)]
         if missing_fields:
             return Response({
@@ -495,14 +495,19 @@ def create_employee(request):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Validate email format
+        # Validate email format ONLY if email is provided
         from django.core.validators import validate_email
         from django.core.exceptions import ValidationError
-        try:
-            validate_email(data.get('email'))
-        except ValidationError:
-            return Response({
-                'error': "Invalid email format"
-            }, status=status.HTTP_400_BAD_REQUEST)
+
+        email = data.get('email')
+        if email:  # ✅ validate only when available
+            try:
+                validate_email(email)
+            except ValidationError:
+                return Response({
+                    'error': "Invalid email format"
+                }, status=status.HTTP_400_BAD_REQUEST)
+
 
         profile, created = Profile.objects.get_or_create(employeeId=data.get('employeeId'))
         
