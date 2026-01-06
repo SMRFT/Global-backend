@@ -150,7 +150,7 @@ USE_TZ = True
 
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000","http://localhost:3001", "http://localhost:6553"]
+    "http://localhost:3000","http://localhost:5173", "http://localhost:6553"]
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
