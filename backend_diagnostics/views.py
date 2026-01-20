@@ -1418,3 +1418,37 @@ def set_employee_password(request):
     #     users = user.objects.all()
     #     serializer = userSerializer(users, many=True)
     #     return Response({"employees": serializer.data}, status=status.HTTP_200_OK)
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework import status
+from django.utils.timezone import now
+from .models import user
+from .serializers import userSerializer
+
+@api_view(['PATCH'])
+def DeactivateUserByEmployeeId(request, employeeId):
+    try:
+        # Get user by employeeId
+        user_obj = user.objects.get(employeeId=employeeId)
+    except user.DoesNotExist:
+        return Response(
+            {"error": "User not found"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Update only is_active field (soft deactivate)
+    user_obj.is_active = False
+    user_obj.lastmodified_date = now()
+    user_obj.lastmodified_by = request.data.get("lastmodified_by", "system")
+    user_obj.save()
+
+    serializer = userSerializer(user_obj)
+
+    return Response(
+        {
+            "message": "User deactivated successfully",
+            "data": serializer.data
+        },
+        status=status.HTTP_200_OK
+    )
