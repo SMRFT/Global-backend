@@ -863,8 +863,6 @@ def get_employee_by_id(request, employee_id):
         logger.error(f"Error fetching employee by ID: {str(e)}")
         return Response({"success": False, "message": "Error retrieving employee."}, status=500)
 
-
-
 @api_view(['GET'])
 @permission_classes([HasRoleAndDataPermission])
 def get_employees_with_labels(request):
@@ -885,8 +883,17 @@ def get_employees_with_labels(request):
         entitlements = {d['DataEntitlementsCode']: d['DataEntitlements'] for d in db['backend_diagnostics_DataEntitlements'].find({}, {'_id': 0})}
         roles = {r['role_code']: r['role_name'] for r in db['backend_diagnostics_RoleMapping'].find({}, {'_id': 0})}
 
-        # Fetch is_password_set for each employee from users_collection
-        user_data = {user['employeeId']: user.get('is_password_set', False) for user in users_collection.find({}, {'employeeId': 1, 'is_password_set': 1, '_id': 0})}
+        # ✅ Fetch both is_active and is_password_set in ONE query
+        user_data = {
+            user['employeeId']: {
+                'is_active': user.get('is_active', True),
+                'is_password_set': user.get('is_password_set', False)
+            }
+            for user in users_collection.find(
+                {},
+                {'employeeId': 1, 'is_active': 1, 'is_password_set': 1, '_id': 0}
+            )
+        }
 
         # Match and enrich the employee data
         for emp in employees:
@@ -894,7 +901,6 @@ def get_employees_with_labels(request):
             emp['department_name'] = departments.get(emp.get('department'), 'N/A')
             emp['primary_role_name'] = roles.get(emp.get('primaryRole'), 'N/A')
 
-            # Convert additionalRoles and dataEntitlements from stringified lists if needed
             import ast
             additional_roles = ast.literal_eval(emp.get('additionalRoles', '[]'))
             emp['additional_role_names'] = [roles.get(code, 'N/A') for code in additional_roles]
@@ -902,8 +908,10 @@ def get_employees_with_labels(request):
             entitlement_codes = ast.literal_eval(emp.get('dataEntitlements', '[]'))
             emp['data_entitlement_names'] = [entitlements.get(code, 'N/A') for code in entitlement_codes]
 
-            # Add is_password_set from MongoDB user data
-            emp['is_password_set'] = user_data.get(emp.get('employeeId'), False)
+            # ✅ Add both values safely
+            user_info = user_data.get(emp.get('employeeId'), {})
+            emp['is_active'] = user_info.get('is_active', True)
+            emp['is_password_set'] = user_info.get('is_password_set', False)
 
         return Response({'employees': employees}, status=200)
 
@@ -1427,9 +1435,8 @@ from .models import user
 from .serializers import userSerializer
 
 @api_view(['PATCH'])
-def DeactivateUserByEmployeeId(request, employeeId):
+def UpdateUserStatusByEmployeeId(request, employeeId):
     try:
-        # Get user by employeeId
         user_obj = user.objects.get(employeeId=employeeId)
     except user.DoesNotExist:
         return Response(
@@ -1437,17 +1444,31 @@ def DeactivateUserByEmployeeId(request, employeeId):
             status=status.HTTP_404_NOT_FOUND
         )
 
-    # Update only is_active field (soft deactivate)
-    user_obj.is_active = False
+    data = request.data
+
+    # Expecting is_active from frontend
+    is_active = data.get('is_active')
+
+    if is_active is None:
+        return Response(
+            {"error": "is_active field is required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Who modified
+    modified_by = data.get('auth-user-id') or data.get('employee_id', 'system')
+
+    # Update status
+    user_obj.is_active = bool(is_active)
     user_obj.lastmodified_date = now()
-    user_obj.lastmodified_by = request.data.get("lastmodified_by", "system")
+    user_obj.lastmodified_by = modified_by
     user_obj.save()
 
     serializer = userSerializer(user_obj)
 
     return Response(
         {
-            "message": "User deactivated successfully",
+            "message": "User activated successfully" if user_obj.is_active else "User deactivated successfully",
             "data": serializer.data
         },
         status=status.HTTP_200_OK
