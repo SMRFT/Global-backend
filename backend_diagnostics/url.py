@@ -20,8 +20,8 @@ path('update_department/<str:department_code>/', views.update_department, name='
 path('addnew_department/', views.addnew_department, name='add_newdepartment'),
 path('addnew_designation/', views.addnew_designation, name='add_newdepartment'),
 
-
-
+# Activate and Deactivate
+path("UpdateUserStatus-user/<str:employeeId>/", views.UpdateUserStatusByEmployeeId),
 
 # Designation
 path("get_next_designation_code/", views.get_next_designation_code, name="get_next_designation_code"),
