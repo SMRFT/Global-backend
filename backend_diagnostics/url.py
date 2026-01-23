@@ -22,7 +22,7 @@ path('addnew_designation/', views.addnew_designation, name='add_newdepartment'),
 
 # Activate and Deactivate
 path("UpdateUserStatus-user/<str:employeeId>/", views.UpdateUserStatusByEmployeeId),
-
+path('download-gridfs/<str:file_id>/', views.download_gridfs, name='download_gridfs'),
 # Designation
 path("get_next_designation_code/", views.get_next_designation_code, name="get_next_designation_code"),
 path('update_designation/<str:designation_code>/', views.update_designation, name='update_designation'),

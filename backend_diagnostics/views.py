@@ -578,6 +578,7 @@ def create_employee(request):
         profile.salaryDetails = salary_details
         profile.fnfStatus = fnf_status
         profile.profileImage = data.get('profileImage')
+        profile.signatureFileId = data.get('signatureFileId') 
         profile.created_by = employee_id
         profile.save()
 
@@ -811,7 +812,10 @@ def update_employee(request, employee_id):
         # Update profile image if provided
         if data.get('profileImage'):
             profile.profileImage = data.get('profileImage')
-        
+        # Update signature if provided
+        if data.get('signatureFileId'):
+            profile.signatureFileId = data.get('signatureFileId')
+
         # Save the updated profile
         profile.save()
         
@@ -836,8 +840,45 @@ def update_employee(request, employee_id):
             'details': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['DELETE'])
+# @permission_classes([HasRoleAndDataPermission])
+def delete_gridfs_file(request, file_id):
+    try:
+        client = MongoClient(os.getenv("GLOBAL_DB_HOST"))
+        db = client[os.getenv("GLOBAL_DB_NAME", "Global")]
+        fs = gridfs.GridFS(db)
 
+        fs.delete(ObjectId(file_id))
 
+        return Response({"success": True, "message": "File deleted successfully"})
+    except Exception as e:
+        return Response(
+            {"success": False, "error": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+from django.http import HttpResponse
+from bson import ObjectId
+import mimetypes
+
+@api_view(['GET'])
+def download_gridfs(request, file_id):
+    try:
+        client = MongoClient(os.getenv("GLOBAL_DB_HOST"))
+        db = client[os.getenv("GLOBAL_DB_NAME", "Global")]
+        fs = gridfs.GridFS(db)
+
+        file = fs.get(ObjectId(file_id))
+
+        response = HttpResponse(file.read(), content_type=file.content_type)
+        response['Content-Disposition'] = f'inline; filename="{file.filename}"'
+        return response
+
+    except Exception as e:
+        return Response(
+            {"success": False, "error": "File not found", "details": str(e)},
+            status=status.HTTP_404_NOT_FOUND
+        )
 
 from rest_framework.response import Response
 from rest_framework import status
