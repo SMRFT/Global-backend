@@ -77,6 +77,7 @@ class Profile(models.Model):
     fnfStatus = models.JSONField(default=dict)
 
     profileImage = models.CharField(max_length=255, null=True, blank=True)
+    signatureFileId = models.CharField(max_length=100, null=True, blank=True)
     created_by = models.CharField(max_length=100)
     created_date = models.DateTimeField(auto_now_add=True)
     lastmodified_by = models.CharField(max_length=100)

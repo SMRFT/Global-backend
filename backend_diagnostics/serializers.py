@@ -67,7 +67,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     salaryDetails = serializers.SerializerMethodField()
     fnfStatus = serializers.SerializerMethodField()
     bankDetails = serializers.SerializerMethodField()
-
+    signature = serializers.CharField(required=False, allow_null=True)
+    
     class Meta:
         model = Profile
         fields = '__all__'
