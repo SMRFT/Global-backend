@@ -49,7 +49,7 @@ class Profile(models.Model):
     fatherName = models.CharField(max_length=255, null=True, blank=True)
     motherName = models.CharField(max_length=255, null=True, blank=True)
     gender = models.CharField(max_length=10)
-    mobileNumber = models.CharField(max_length=15)
+    mobileNumber = models.CharField(max_length=15, null=True, blank=True)
     bloodGroup = models.CharField(max_length=5, null=True, blank=True)
     maritalStatus = models.CharField(max_length=20, null=True, blank=True)
     guardianNumber = models.CharField(max_length=15, null=True, blank=True)
