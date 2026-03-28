@@ -487,7 +487,7 @@ def create_employee(request):
         employee_id = data.get('auth-user-id') or data.get('employee_id', 'system')
         logger.info(f"Received employee data for ID: {data.get('employeeId')}")
         
-        required_fields = ['employeeId', 'employeeName', 'gender', 'mobileNumber', 'dateOfBirth']
+        required_fields = ['employeeId', 'employeeName', 'gender']
         missing_fields = [f for f in required_fields if not data.get(f)]
         if missing_fields:
             return Response({
