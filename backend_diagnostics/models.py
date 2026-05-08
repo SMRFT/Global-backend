@@ -61,6 +61,7 @@ class Profile(models.Model):
     designation = models.CharField(max_length=100, null=True, blank=True)
     primaryRole = models.CharField(max_length=100)
     additionalRoles = models.JSONField(default=list)
+    hospitalCode = models.CharField(default="SH001",max_length=10)
     dataEntitlements = models.JSONField(default=list)
 
     employmentStatus = models.CharField(max_length=20)
