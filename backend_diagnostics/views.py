@@ -62,13 +62,15 @@ logger = logging.getLogger(__name__)
 
 import json
 
-def safe_json_load(value):
+def safe_json_load(value, default=None):
+    if default is None:
+        default = []
     try:
         if isinstance(value, str):
             return json.loads(value)
-        return value
+        return value if value is not None else default
     except Exception:
-        return []
+        return default
 
 
 @api_view(['POST'])
@@ -479,6 +481,21 @@ def create_user_in_mongodb(employee_data):
         logger.error(f"Failed to create/update user in MongoDB: {str(e)}")
         raise
 
+@api_view(['GET'])
+@permission_classes([HasRoleAndDataPermission])
+def check_employee_id(request):
+    """
+    Real-time check: returns whether an employee ID already exists.
+    Used for live validation while typing in the create profile form.
+    """
+    employee_id = request.GET.get('employeeId', '').strip()
+    if not employee_id:
+        return Response({'exists': False}, status=status.HTTP_200_OK)
+
+    exists = Profile.objects.filter(employeeId=employee_id).exists()
+    return Response({'exists': exists}, status=status.HTTP_200_OK)
+
+
 @api_view(['POST'])
 @permission_classes([HasRoleAndDataPermission])
 def create_employee(request):
@@ -509,78 +526,102 @@ def create_employee(request):
                 }, status=status.HTTP_400_BAD_REQUEST)
 
 
-        profile, created = Profile.objects.get_or_create(employeeId=data.get('employeeId'))
-        
+        # Check if employee ID already exists — reject if creating a new profile
+        existing_profile = Profile.objects.filter(employeeId=data.get('employeeId')).first()
+        if existing_profile:
+            return Response({
+                'error': f"Employee ID '{data.get('employeeId')}' already exists. Please use a different Employee ID."
+            }, status=status.HTTP_409_CONFLICT)
+
+        # Build profile document — bypass djongo ORM (known NULL-handling bug in djongo 1.3.6)
+        # Use pymongo directly to avoid SQLDecodeError on NULL values in UPDATE
+        now_ist = datetime.utcnow()
+
         additional_roles = safe_json_load(data.get('additionalRoles'), [])
         data_entitlements = safe_json_load(data.get('dataEntitlements'), [])
         qualifications_data = safe_json_load(data.get('qualifications'), [])
         experiences_data = safe_json_load(data.get('experiences'), [])
         kids_details = safe_json_load(data.get('kidsDetails'), [])
-        
+
         kyc_details = {
-            'aadhaarNumber': data.get('kyc_aadhaarNumber'),
-            'panNumber': data.get('kyc_panNumber'),
-            'panType': data.get('kyc_panType')
+            'aadhaarNumber': data.get('kyc_aadhaarNumber') or '',
+            'panNumber': data.get('kyc_panNumber') or '',
+            'panType': data.get('kyc_panType') or '',
         }
-        
         family_details = {
-            'fatherAadhaar': data.get('family_fatherAadhaar'),
-            'fatherDob': data.get('family_fatherDob'),
-            'motherAadhaar': data.get('family_motherAadhaar'),
-            'motherDob': data.get('family_motherDob'),
-            'spouseName': data.get('family_spouseName'),
-            'spouseAadhaar': data.get('family_spouseAadhaar'),
-            'spouseDob': data.get('family_spouseDob'),
-            'kidsDetails': kids_details
+            'fatherAadhaar': data.get('family_fatherAadhaar') or '',
+            'fatherDob': data.get('family_fatherDob') or None,
+            'motherAadhaar': data.get('family_motherAadhaar') or '',
+            'motherDob': data.get('family_motherDob') or None,
+            'spouseName': data.get('family_spouseName') or '',
+            'spouseAadhaar': data.get('family_spouseAadhaar') or '',
+            'spouseDob': data.get('family_spouseDob') or None,
+            'kidsDetails': kids_details,
         }
-        
         bank_details = {
-            'bankName': data.get('bank_bankName'),
-            'ifscCode': data.get('bank_ifscCode'),
-            'accountNumber': data.get('bank_accountNumber'),
-            'branch': data.get('bank_branch')
+            'bankName': data.get('bank_bankName') or '',
+            'ifscCode': data.get('bank_ifscCode') or '',
+            'accountNumber': data.get('bank_accountNumber') or '',
+            'branch': data.get('bank_branch') or '',
         }
-        
         salary_details = {
-            'netSalary': data.get('salary_netSalary'),
-            'grossSalary': data.get('salary_grossSalary'),
-            'ctc': data.get('salary_ctc')
+            'netSalary': data.get('salary_netSalary') or '',
+            'grossSalary': data.get('salary_grossSalary') or '',
+            'ctc': data.get('salary_ctc') or '',
         }
-        
         fnf_status = {
-            'remarks': data.get('fnf_remarks')
+            'remarks': data.get('fnf_remarks') or '',
         }
 
-        # Update profile fields
-        profile.employeeName = data.get('employeeName')
-        profile.fatherName = data.get('fatherName')
-        profile.motherName = data.get('motherName')
-        profile.gender = data.get('gender')
-        profile.mobileNumber = data.get('mobileNumber')
-        profile.bloodGroup = data.get('bloodGroup')
-        profile.maritalStatus = data.get('maritalStatus')
-        profile.guardianNumber = data.get('guardianNumber')
-        profile.dateOfBirth = data.get('dateOfBirth')
-        profile.email = data.get('email')
-        profile.department = data.get('department')
-        profile.designation = data.get('designation')
-        profile.primaryRole = data.get('primaryRole')
-        profile.additionalRoles = additional_roles
-        profile.dataEntitlements = data_entitlements
-        profile.employmentStatus = data.get('employmentStatus')
-        profile.registrationNumber = data.get('registrationNumber')
-        profile.validityDate = data.get('validityDate')
-        profile.kycDetails = kyc_details
-        profile.familyDetails = family_details
-        profile.qualifications = qualifications_data
-        profile.experiences = experiences_data
-        profile.bankDetails = bank_details
-        profile.salaryDetails = salary_details
-        profile.fnfStatus = fnf_status
-        profile.profileImage = data.get('profileImage')
-        profile.signatureFileId = data.get('signatureFileId') 
-        profile.created_by = employee_id
-        profile.save()
+        profile_doc = {
+            '_id': data.get('employeeId'),
+            'employeeId': data.get('employeeId'),
+            'employeeName': data.get('employeeName') or '',
+            'fatherName': data.get('fatherName') or '',
+            'motherName': data.get('motherName') or '',
+            'gender': data.get('gender') or '',
+            'mobileNumber': data.get('mobileNumber') or '',
+            'bloodGroup': data.get('bloodGroup') or '',
+            'maritalStatus': data.get('maritalStatus') or '',
+            'guardianNumber': data.get('guardianNumber') or '',
+            'dateOfBirth': data.get('dateOfBirth') or None,
+            'age': None,
+            'email': data.get('email') or '',
+            'department': data.get('department') or '',
+            'designation': data.get('designation') or '',
+            'primaryRole': data.get('primaryRole') or '',
+            'additionalRoles': additional_roles,
+            'dataEntitlements': data_entitlements,
+            'hospitalCode': data.get('hospitalCode') or 'SH001',
+            'employmentStatus': data.get('employmentStatus') or '',
+            'registrationNumber': data.get('registrationNumber') or '',
+            'validityDate': data.get('validityDate') or None,
+            'kycDetails': kyc_details,
+            'familyDetails': family_details,
+            'qualifications': qualifications_data,
+            'experiences': experiences_data,
+            'bankDetails': bank_details,
+            'salaryDetails': salary_details,
+            'fnfStatus': fnf_status,
+            'profileImage': data.get('profileImage') or None,
+            'signatureFileId': data.get('signatureFileId') or None,
+            'created_by': employee_id,
+            'created_date': now_ist,
+            'lastmodified_by': employee_id,
+            'lastmodified_date': now_ist,
+        }
+
+        # Insert directly into MongoDB via pymongo
+        _mongo_client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+        _mongo_db = _mongo_client[os.getenv('GLOBAL_DB_NAME', 'Global')]
+        _profiles_col = _mongo_db['backend_diagnostics_profile']
+        _profiles_col.insert_one(profile_doc)
+        _mongo_client.close()
+
+        # Fetch profile back via ORM for the serializer
+        profile = Profile.objects.get(employeeId=data.get('employeeId'))
+
+
 
         # Create user in MongoDB and get reset token
         try:
@@ -619,7 +660,7 @@ def create_employee(request):
         
         return Response(
             response_data,
-            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
+            status=status.HTTP_201_CREATED
         )
 
     except Exception as e:

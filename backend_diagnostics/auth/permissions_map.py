@@ -23,6 +23,7 @@ PAGE_MAPPING = {
     '/_b_a_c_k_e_n_d/Global/get_next_designation_code/':'GL-P-NDC',
     '/_b_a_c_k_e_n_d/Global/employees_birthdays_today/':'GL-P-EBT',
     '/_b_a_c_k_e_n_d/Global/resend_employee_email/.*':'GL-P-RSE',
+    '/_b_a_c_k_e_n_d/Global/check_employee_id/.*':'GL-P-EP',
     
 
 
