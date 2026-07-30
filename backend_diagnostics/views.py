@@ -73,6 +73,39 @@ def safe_json_load(value, default=None):
         return default
 
 
+def _load_mongo_reference_data():
+    client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
+    db = client[os.getenv('GLOBAL_DB_NAME', 'Global')]
+    return {
+        'designations': {
+            item['Designation_code']: item['designation']
+            for item in db['backend_diagnostics_Designation'].find({}, {'_id': 0})
+        },
+        'departments': {
+            item['department_code']: item['department_name']
+            for item in db['backend_diagnostics_Departments'].find({}, {'_id': 0})
+        },
+        'entitlements': {
+            item['DataEntitlementsCode']: item['DataEntitlements']
+            for item in db['backend_diagnostics_DataEntitlements'].find({}, {'_id': 0})
+        },
+        'roles': {
+            item['role_code']: item['role_name']
+            for item in db['backend_diagnostics_RoleMapping'].find({}, {'_id': 0})
+        },
+        'users': {
+            item['employeeId']: {
+                'is_active': item.get('is_active', True),
+                'is_password_set': item.get('is_password_set', False),
+            }
+            for item in db['backend_diagnostics_user'].find(
+                {},
+                {'employeeId': 1, 'is_active': 1, 'is_password_set': 1, '_id': 0},
+            )
+        },
+    }
+
+
 @api_view(['POST'])
 def upload_gridfs(request):
     """Upload file to GridFS and return file ID"""
@@ -949,49 +982,24 @@ def get_employee_by_id(request, employee_id):
 @permission_classes([HasRoleAndDataPermission])
 def get_employees_with_labels(request):
     try:
-        # Fetch employee profiles
         profiles = Profile.objects.all().order_by('-created_date')
         serializer = ProfileSerializer(profiles, many=True)
         employees = serializer.data
 
-        # MongoDB setup
-        client = MongoClient(os.getenv('GLOBAL_DB_HOST'))
-        db = client[os.getenv('GLOBAL_DB_NAME', "Global")]
-        users_collection = db['backend_diagnostics_user']
+        reference_data = _load_mongo_reference_data()
 
-        # Fetch all reference collections
-        designations = {d['Designation_code']: d['designation'] for d in db['backend_diagnostics_Designation'].find({}, {'_id': 0})}
-        departments = {d['department_code']: d['department_name'] for d in db['backend_diagnostics_Departments'].find({}, {'_id': 0})}
-        entitlements = {d['DataEntitlementsCode']: d['DataEntitlements'] for d in db['backend_diagnostics_DataEntitlements'].find({}, {'_id': 0})}
-        roles = {r['role_code']: r['role_name'] for r in db['backend_diagnostics_RoleMapping'].find({}, {'_id': 0})}
-
-        # ✅ Fetch both is_active and is_password_set in ONE query
-        user_data = {
-            user['employeeId']: {
-                'is_active': user.get('is_active', True),
-                'is_password_set': user.get('is_password_set', False)
-            }
-            for user in users_collection.find(
-                {},
-                {'employeeId': 1, 'is_active': 1, 'is_password_set': 1, '_id': 0}
-            )
-        }
-
-        # Match and enrich the employee data
         for emp in employees:
-            emp['designation_name'] = designations.get(emp.get('designation'), 'N/A')
-            emp['department_name'] = departments.get(emp.get('department'), 'N/A')
-            emp['primary_role_name'] = roles.get(emp.get('primaryRole'), 'N/A')
+            emp['designation_name'] = reference_data['designations'].get(emp.get('designation'), 'N/A')
+            emp['department_name'] = reference_data['departments'].get(emp.get('department'), 'N/A')
+            emp['primary_role_name'] = reference_data['roles'].get(emp.get('primaryRole'), 'N/A')
 
-            import ast
-            additional_roles = ast.literal_eval(emp.get('additionalRoles', '[]'))
-            emp['additional_role_names'] = [roles.get(code, 'N/A') for code in additional_roles]
+            additional_roles = safe_json_load(emp.get('additionalRoles', '[]'))
+            emp['additional_role_names'] = [reference_data['roles'].get(code, 'N/A') for code in additional_roles]
 
-            entitlement_codes = ast.literal_eval(emp.get('dataEntitlements', '[]'))
-            emp['data_entitlement_names'] = [entitlements.get(code, 'N/A') for code in entitlement_codes]
+            entitlement_codes = safe_json_load(emp.get('dataEntitlements', '[]'))
+            emp['data_entitlement_names'] = [reference_data['entitlements'].get(code, 'N/A') for code in entitlement_codes]
 
-            # ✅ Add both values safely
-            user_info = user_data.get(emp.get('employeeId'), {})
+            user_info = reference_data['users'].get(emp.get('employeeId'), {})
             emp['is_active'] = user_info.get('is_active', True)
             emp['is_password_set'] = user_info.get('is_password_set', False)
 
@@ -1404,18 +1412,73 @@ def get_todays_birthdays(request):
     try:
         today = timezone.now().astimezone(IST).date()
 
-        # Fetch all profiles
+        # Fetch all profiles and handle various stored dateOfBirth formats robustly
         profiles = Profile.objects.all()
+
+        def _coerce_to_date(dob_raw):
+            """Coerce various stored dateOfBirth representations to a date object.
+
+            Supports: date, datetime, ISO string (YYYY-MM-DD or full ISO),
+            dict with Mongo-style {'$date': '...'} or epoch milliseconds.
+            Returns a datetime.date or None.
+            """
+            try:
+                from datetime import datetime, date as _date
+
+                if dob_raw is None:
+                    return None
+                # DJango DateField may already be a date
+                if isinstance(dob_raw, _date) and not isinstance(dob_raw, datetime):
+                    return dob_raw
+                if isinstance(dob_raw, datetime):
+                    return dob_raw.date()
+                if isinstance(dob_raw, str):
+                    # Try ISO formats
+                    try:
+                        # fromisoformat handles YYYY-MM-DD and full ISO
+                        return datetime.fromisoformat(dob_raw).date()
+                    except Exception:
+                        try:
+                            return datetime.strptime(dob_raw, "%Y-%m-%d").date()
+                        except Exception:
+                            return None
+                if isinstance(dob_raw, dict):
+                    # Mongo export style: {'$date': '2025-07-03T04:57:06.306Z'}
+                    val = dob_raw.get("$date") or dob_raw.get("date")
+                    if isinstance(val, str):
+                        try:
+                            return datetime.fromisoformat(val.replace('Z', '+00:00')).date()
+                        except Exception:
+                            try:
+                                return datetime.strptime(val, "%Y-%m-%dT%H:%M:%S.%fZ").date()
+                            except Exception:
+                                return None
+                    # epoch milliseconds
+                    try:
+                        ms = int(val)
+                        return datetime.utcfromtimestamp(ms / 1000).date()
+                    except Exception:
+                        return None
+            except Exception:
+                logger.exception("Error coercing dateOfBirth")
+            return None
 
         filtered_profiles = []
         for profile in profiles:
-            if profile.dateOfBirth and profile.dateOfBirth.month == today.month and profile.dateOfBirth.day == today.day:
-                # calculate age
-                profile.age = today.year - profile.dateOfBirth.year - (
-                    (today.month, today.day) < (profile.dateOfBirth.month, profile.dateOfBirth.day)
-                )
-                profile.save(update_fields=["age"])
-                filtered_profiles.append(profile)
+            try:
+                dob_raw = profile.dateOfBirth
+                dob = _coerce_to_date(dob_raw)
+                if dob and dob.month == today.month and dob.day == today.day:
+                    # calculate age without raising on write; save best-effort
+                    try:
+                        profile.age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+                        profile.save(update_fields=["age"])
+                    except Exception:
+                        logger.exception(f"Failed to update age for {getattr(profile, 'employeeId', 'unknown')}")
+                    filtered_profiles.append(profile)
+            except Exception:
+                logger.exception(f"Error processing profile {getattr(profile, 'employeeId', 'unknown')}")
+                continue
 
         if not filtered_profiles:
             return Response({"success": False, "message": "No birthdays found today."}, status=200)
@@ -1423,26 +1486,30 @@ def get_todays_birthdays(request):
         serializer = EmployeeBirthdaySerializer(filtered_profiles, many=True)
         birthday_data = serializer.data
 
-        # 🔹 Enrich department & designation from Mongo
+        # 🔹 Enrich department & designation from Mongo (best-effort, skip lookup failures)
         for profile in birthday_data:
-            dept_code = profile.get("department")
-            desig_code = profile.get("designation")
+            try:
+                dept_code = profile.get("department")
+                desig_code = profile.get("designation")
 
-            # Department
-            if dept_code:
-                dept = dept_col.find_one({"department_code": dept_code})
-                if dept:
-                    profile["department"] = dept.get("department_name")
-                else:
-                    logger.warning(f"No department found for code {dept_code}")
+                # Department
+                if dept_code:
+                    dept = dept_col.find_one({"department_code": dept_code})
+                    if dept:
+                        profile["department"] = dept.get("department_name")
+                    else:
+                        logger.debug(f"No department found for code {dept_code}")
 
-            # Designation
-            if desig_code:
-                desig = desig_col.find_one({"Designation_code": desig_code})
-                if desig:
-                    profile["designation"] = desig.get("designation")
-                else:
-                    logger.warning(f"No designation found for code {desig_code}")
+                # Designation
+                if desig_code:
+                    desig = desig_col.find_one({"Designation_code": desig_code})
+                    if desig:
+                        profile["designation"] = desig.get("designation")
+                    else:
+                        logger.debug(f"No designation found for code {desig_code}")
+            except Exception:
+                logger.exception("Error enriching profile with Mongo reference data")
+                continue
 
         return Response({
             "success": True,
@@ -1451,7 +1518,7 @@ def get_todays_birthdays(request):
         }, status=200)
 
     except Exception as e:
-        logger.error(f"Error fetching today's birthdays: {str(e)}")
+        logger.exception("Error fetching today's birthdays")
         return Response({"success": False, "message": "Error retrieving data."}, status=500)
     
 

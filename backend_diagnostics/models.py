@@ -53,7 +53,8 @@ class Profile(models.Model):
     bloodGroup = models.CharField(max_length=5, null=True, blank=True)
     maritalStatus = models.CharField(max_length=20, null=True, blank=True)
     guardianNumber = models.CharField(max_length=15, null=True, blank=True)
-    dateOfBirth = models.DateField(null=True, blank=True)
+    # Store full timestamp with timezone for dateOfBirth
+    dateOfBirth = models.DateTimeField(null=True, blank=True)
     age = models.IntegerField(null=True, blank=True)
     email = models.EmailField(blank=True, null=True)
 

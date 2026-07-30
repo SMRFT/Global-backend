@@ -68,7 +68,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     fnfStatus = serializers.SerializerMethodField()
     bankDetails = serializers.SerializerMethodField()
     signature = serializers.CharField(required=False, allow_null=True)
-    
+
     class Meta:
         model = Profile
         fields = '__all__'
@@ -81,26 +81,29 @@ class ProfileSerializer(serializers.ModelSerializer):
                 return field
         return field
 
+    def _get_field_value(self, obj, field_name):
+        return self.parse_field(getattr(obj, field_name))
+
     def get_qualifications(self, obj):
-        return self.parse_field(obj.qualifications)
+        return self._get_field_value(obj, 'qualifications')
 
     def get_experiences(self, obj):
-        return self.parse_field(obj.experiences)
+        return self._get_field_value(obj, 'experiences')
 
     def get_familyDetails(self, obj):
-        return self.parse_field(obj.familyDetails)
+        return self._get_field_value(obj, 'familyDetails')
 
     def get_kycDetails(self, obj):
-        return self.parse_field(obj.kycDetails)
+        return self._get_field_value(obj, 'kycDetails')
 
     def get_salaryDetails(self, obj):
-        return self.parse_field(obj.salaryDetails)
+        return self._get_field_value(obj, 'salaryDetails')
 
     def get_fnfStatus(self, obj):
-        return self.parse_field(obj.fnfStatus)
+        return self._get_field_value(obj, 'fnfStatus')
 
     def get_bankDetails(self, obj):
-        return self.parse_field(obj.bankDetails)
+        return self._get_field_value(obj, 'bankDetails')
 
 class GridFSFileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -116,6 +119,7 @@ dept_col = db["backend_diagnostics_Departments"]
 desig_col = db["backend_diagnostics_Designation"]
 
 class EmployeeBirthdaySerializer(serializers.ModelSerializer):
+    dateOfBirth = serializers.SerializerMethodField()
     department = serializers.SerializerMethodField()
     designation = serializers.SerializerMethodField()
 
@@ -137,6 +141,36 @@ class EmployeeBirthdaySerializer(serializers.ModelSerializer):
             return None
         desig = desig_col.find_one({"Designation_code": obj.designation})
         return desig.get("designation") if desig else None
+
+    def get_dateOfBirth(self, obj):
+        """Return dateOfBirth as an ISO8601 timestamp with timezone (e.g. 1989-10-12T00:00:00.000+00:00)."""
+        try:
+            import datetime as _dt
+
+            dob = getattr(obj, 'dateOfBirth', None)
+            if not dob:
+                return None
+
+            # If already a datetime, use it; if date -> convert to datetime at midnight
+            if isinstance(dob, _dt.datetime):
+                dt = dob
+            elif isinstance(dob, _dt.date):
+                dt = _dt.datetime(dob.year, dob.month, dob.day)
+            else:
+                # Try parsing common string/export formats
+                try:
+                    dt = _dt.datetime.fromisoformat(str(dob).replace('Z', '+00:00'))
+                except Exception:
+                    return None
+
+            # Ensure timezone-aware in UTC
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_dt.timezone.utc)
+
+            # ISO format with offset (+00:00)
+            return dt.astimezone(_dt.timezone.utc).isoformat()
+        except Exception:
+            return None
 
 from rest_framework import serializers
 from .models import user
